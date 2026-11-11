@@ -414,7 +414,7 @@ make demo-up      # clúster + app + Prometheus + Grafana + smoke test (≈ 3 mi
 | Finance Platform | http://localhost:8090 |
 | Grafana | http://localhost:3000 (abre directo el dashboard; usuario admin: `admin` / `opendays`) |
 | Prometheus | http://localhost:9090/targets (debe mostrar los 2 pods de la API en `UP`) |
-| Jaeger | http://localhost:16686 (ver Paso 8B) |
+| Jaeger | http://localhost:16686 (ver Pasos 8B y 8C) |
 
 Apagar todo: `make demo-down`.
 
@@ -546,6 +546,75 @@ kubectl -n finance set image deployment/api api=ghcr.io/gmgalvan/finance-platfor
 ```
 
 Después, regresar a una versión publicada con `make k8s-release`.
+
+---
+
+## Paso 8C — Traza completa: navegador → Nginx → API → PostgreSQL
+
+**Idea:** en el Paso 8B la traza empezaba en la API. Ahora empieza **en el navegador**, en el momento en que el usuario hace clic, y muestra cada salto.
+
+```
+Navegador ──► Nginx ──► API ──► PostgreSQL
+finance-web   finance-nginx   finance-api   (consultas SQL)
+```
+
+### Cómo se conecta
+
+1. **Navegador** (`app/stage-2/frontend/tracing.js`, sin librerías):
+   - `tracedFetch()` funciona como `fetch()`, pero crea un identificador de traza y lo envía en el encabezado estándar W3C `traceparent`.
+   - Al terminar, envía su span (`Suscribirse` o `Cargar dashboard`) en formato OTLP/JSON a `/v1/traces`.
+2. **Nginx** (`deploy/docker/stage-2/nginx.conf.template`):
+   - Usa la imagen oficial `nginx:1.27-alpine-otel`, que ya trae el módulo de OpenTelemetry.
+   - Lee el `traceparent`, crea su propio span y lo pasa a la API (`otel_trace_context propagate`).
+   - Reenvía `/v1/traces` a Jaeger, así el navegador no necesita hablar con Jaeger directamente (sin problemas de CORS).
+   - Escribe el `trace_id` en cada línea del access log.
+3. **API y PostgreSQL:** igual que en el Paso 8B. La API continúa la traza que recibe.
+
+### Encendido solo donde hay Jaeger
+
+La configuración de Nginx es una **plantilla**: la imagen reemplaza variables de entorno al arrancar.
+
+| Variable | Por defecto (Compose, CI, EC2) | En Kubernetes |
+|---|---|---|
+| `OTEL_TRACE` | `off` | `on` |
+| `OTEL_EXPORTER_ENDPOINT` | `localhost:4317` | `jaeger.monitoring.svc.cluster.local:4317` |
+| `OTLP_HTTP_COLLECTOR` | `http://127.0.0.1:4318` | `http://jaeger.monitoring.svc.cluster.local:4318` |
+
+Sin Jaeger, Nginx arranca igual y `/v1/traces` responde 502 sin afectar a la app.
+
+### Ver la traza completa
+
+1. Abrir http://localhost:8090/subscribe.html y crear una cuenta.
+2. Abrir http://localhost:16686.
+3. **Service:** `finance-web` → **Find Traces** → abrir la traza `Suscribirse`.
+
+**Resultado del ensayo:**
+
+```
+[finance-web]   Suscribirse                  131.3 ms   ← lo que esperó el usuario
+  [finance-nginx] POST /api/subscriptions    106.0 ms
+    [finance-api] POST /api/subscriptions    104.6 ms
+      [finance-api] hash_password             85.2 ms
+      [finance-api] INSERT                     2.5 ms
+      [finance-api] DELETE                     1.2 ms
+      [finance-api] INSERT                     1.0 ms
+      [finance-api] INSERT                     0.8 ms
+```
+
+- Diferencia entre navegador y Nginx (≈ 25 ms): red y navegador.
+- Diferencia entre Nginx y API (≈ 1.5 ms): el salto del proxy.
+- En la vista **System Architecture** de Jaeger aparece el mapa `finance-web → finance-nginx → finance-api`.
+
+### De un log a su traza
+
+```bash
+kubectl -n finance logs -l app.kubernetes.io/name=frontend --tail=20 | grep subscriptions
+# ... "POST /api/subscriptions HTTP/1.1" 201 ... trace_id=d35c702ecf03a5af0807ac5591d5ca59
+```
+
+Copiar ese `trace_id` en el buscador de Jaeger (arriba a la izquierda) abre la traza exacta.
+
+**Mensaje para la charla:** el usuario esperó 131 ms. Con una sola traza se ve cuánto fue red, cuánto proxy, cuánto API y cuánto base de datos, y que el 65 % es el hash de seguridad.
 
 ---
 
