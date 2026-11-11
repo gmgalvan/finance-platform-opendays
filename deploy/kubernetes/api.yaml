@@ -51,6 +51,11 @@ spec:
                 secretKeyRef:
                   name: database
                   key: DATABASE_URL
+            # Trazas hacia Jaeger (namespace monitoring) por OTLP/HTTP.
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://jaeger.monitoring.svc:4318
+            - name: OTEL_SERVICE_NAME
+              value: finance-api
           # Lista para recibir tráfico solo si también llega a PostgreSQL.
           readinessProbe:
             httpGet:

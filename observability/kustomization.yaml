@@ -12,6 +12,7 @@ resources:
   - namespace.yaml
   - prometheus/deployment.yaml
   - grafana/deployment.yaml
+  - jaeger/deployment.yaml
 
 generatorOptions:
   disableNameSuffixHash: false

@@ -93,6 +93,7 @@ obs-deploy:
 	kubectl -n monitoring rollout status deployment/grafana --timeout=180s
 	@echo "Grafana:    http://localhost:3000  (anónimo de solo lectura; admin / opendays)"
 	@echo "Prometheus: http://localhost:9090/targets"
+	@echo "Jaeger:     http://localhost:16686"
 
 obs-status:
 	kubectl -n monitoring get pods,services
@@ -104,6 +105,7 @@ demo-up: kind-up k8s-deploy obs-deploy k8s-smoke
 	@echo "App:        http://localhost:8090"
 	@echo "Grafana:    http://localhost:3000"
 	@echo "Prometheus: http://localhost:9090"
+	@echo "Jaeger:     http://localhost:16686"
 
 demo-down: kind-down
 

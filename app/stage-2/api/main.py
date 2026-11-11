@@ -8,6 +8,7 @@ from contextlib import contextmanager
 
 import psycopg
 from fastapi import FastAPI, HTTPException, Request, Response, status
+from opentelemetry import trace
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field, field_validator
@@ -31,11 +32,48 @@ REQUEST_DURATION = Histogram(
     ["method", "path"],
 )
 
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
+
 app = FastAPI(
     title="Finance Platform API",
     description="API educativa para demostrar una arquitectura de tres capas.",
     version="0.2.0",
 )
+
+tracer = trace.get_tracer("finance-api")
+
+
+def configure_tracing(application: FastAPI) -> bool:
+    """Envía trazas por OTLP solo si OTEL_EXPORTER_OTLP_ENDPOINT está definido."""
+    if not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        return False
+
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    provider = TracerProvider(
+        resource=Resource.create(
+            {
+                "service.name": os.environ.get("OTEL_SERVICE_NAME", "finance-api"),
+                "service.version": APP_VERSION,
+            }
+        )
+    )
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+
+    PsycopgInstrumentor().instrument(enable_commenter=False)
+    # Los probes y Prometheus llaman /health y /metrics cada pocos segundos:
+    # no aportan a las trazas y llenarían Jaeger de ruido.
+    FastAPIInstrumentor.instrument_app(application, excluded_urls="health,metrics")
+    return True
+
+
+configure_tracing(app)
 
 
 class SubscriptionRequest(BaseModel):
@@ -111,7 +149,12 @@ def health():
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1 AS healthy")
             cursor.fetchone()
-    return {"status": "ok", "service": "finance-api", "database": "connected"}
+    return {
+        "status": "ok",
+        "service": "finance-api",
+        "version": APP_VERSION,
+        "database": "connected",
+    }
 
 
 @app.get("/metrics")
@@ -122,7 +165,10 @@ def metrics():
 
 @app.post("/api/subscriptions", status_code=status.HTTP_201_CREATED)
 def create_subscription(payload: SubscriptionRequest):
-    password_hash = hash_password(payload.password)
+    # PBKDF2 es lento a propósito (210 000 iteraciones); en la traza se ve como
+    # el paso que más tarda.
+    with tracer.start_as_current_span("hash_password"):
+        password_hash = hash_password(payload.password)
 
     with database_connection() as connection:
         with connection.cursor() as cursor:

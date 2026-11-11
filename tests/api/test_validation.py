@@ -84,3 +84,9 @@ def test_metrics_are_exposed_in_prometheus_format(client):
     assert response.headers["content-type"].startswith("text/plain")
     assert "finance_api_requests_total" in response.text
     assert "finance_api_request_duration_seconds" in response.text
+
+
+def test_tracing_is_disabled_without_otlp_endpoint(monkeypatch):
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+
+    assert main.configure_tracing(main.app) is False
