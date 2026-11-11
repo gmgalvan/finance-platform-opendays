@@ -1,4 +1,4 @@
-.PHONY: kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
+.PHONY: kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke k8s-release k8s-rollback k8s-history k8s-watch k8s-ping test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
 
 PYTHON ?= .venv/bin/python
 TEST_DB_URL ?= postgresql://finance:finance_demo@localhost:55432/finance_platform
@@ -33,6 +33,9 @@ smoke:
 # --- Stage 6: Kubernetes con Kind ------------------------------------------
 
 KUSTOMIZE = kubectl kustomize --load-restrictor LoadRestrictionsNone deploy/kubernetes
+# make k8s-deploy TAG=sha-<commit> despliega otra versión sin editar kustomization.yaml
+TAG ?=
+RENDER = $(KUSTOMIZE)$(if $(TAG), | sed -E 's|(ghcr.io/gmgalvan/finance-platform-[a-z]+):sha-[0-9a-f]+|\1:$(TAG)|')
 
 kind-up:
 	kind create cluster --config deploy/kind/cluster.yaml --wait 120s
@@ -41,10 +44,10 @@ kind-down:
 	kind delete cluster --name finance
 
 k8s-render:
-	$(KUSTOMIZE)
+	$(RENDER)
 
 k8s-deploy:
-	$(KUSTOMIZE) | kubectl apply -f -
+	$(RENDER) | kubectl apply -f -
 	kubectl -n finance rollout status statefulset/postgres --timeout=180s
 	kubectl -n finance rollout status deployment/api --timeout=180s
 	kubectl -n finance rollout status deployment/frontend --timeout=180s
@@ -54,6 +57,30 @@ k8s-status:
 
 k8s-smoke:
 	tests/smoke/smoke.sh http://localhost:8090
+
+# Despliega la imagen del último commit de main (o TAG=sha-<commit>)
+k8s-release:
+	deploy/kind/release.sh $(TAG)
+
+k8s-rollback:
+	kubectl -n finance rollout undo deployment/api
+	kubectl -n finance rollout undo deployment/frontend
+	kubectl -n finance rollout status deployment/api --timeout=180s
+	kubectl -n finance rollout status deployment/frontend --timeout=180s
+
+k8s-history:
+	kubectl -n finance rollout history deployment/frontend
+
+# Para la demo: pods en vivo en una terminal y disponibilidad en otra
+k8s-watch:
+	kubectl -n finance get pods -l 'app.kubernetes.io/name in (api,frontend)' -w
+
+k8s-ping:
+	@while true; do \
+		printf '%s  ' "$$(date +%T)"; \
+		curl -s -o /dev/null -w 'HTTP %{http_code}  %{time_total}s\n' --max-time 2 http://localhost:8090/api/health || echo 'sin respuesta'; \
+		sleep 0.5; \
+	done
 
 # --- Stages 1-3 --------------------------------------------------------------
 
