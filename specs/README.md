@@ -235,6 +235,19 @@ Durante el despliegue respondieron 149 de 149 solicitudes con HTTP 200: cero ca�
 
 Comandos: `make k8s-release`, `make k8s-watch`, `make k8s-ping`, `make k8s-history`, `make k8s-rollback`. El guion de la demo está en `docs/guia-de-ejecucion.md`, Paso 7.
 
+### Stage 8 — Observabilidad: terminado
+
+Prometheus v3.1 y Grafana 11.4 en el namespace `monitoring`, instalados con manifiestos propios en `observability/` (≈ 400 MB; todo el clúster usa ≈ 1.3 GB).
+
+- Prometheus descubre los pods de la API por anotaciones y etiqueta cada serie con `version` (`sha-<commit>`). Solo tiene permiso para listar pods de `finance`.
+- Grafana abre directamente el dashboard **Finance Platform**: disponibilidad, tráfico, latencia p95, suscripciones, réplicas por versión, códigos HTTP y latencia p50/p95.
+- `make demo-up` levanta clúster, app, observabilidad y smoke test en un solo comando.
+- `make k8s-traffic` genera tráfico simulado.
+
+Hallazgo: con tráfico continuo, el Rolling Update cortaba ≈ 0.7 % de las conexiones (3/434) porque los pods se apagaban antes de salir del Service. Se agregó `preStop: sleep 5` a la API y al frontend; después, 4 releases con 576/576 respuestas correctas.
+
+Loki (logs) y OpenTelemetry/Jaeger (trazas) quedan fuera de la demo por ahora.
+
 ## Decisiones importantes
 
 - Finance Journal y Finance Platform son etapas del mismo producto, no proyectos independientes.
@@ -246,9 +259,10 @@ Comandos: `make k8s-release`, `make k8s-watch`, `make k8s-ping`, `make k8s-histo
 - Los recursos cloud deben destruirse al terminar cada práctica.
 - Todo cambio llega a `main` mediante Pull Request y CI en verde.
 
-## Siguiente etapa — Observabilidad
+## Siguiente etapa — SRE
 
-1. Prometheus y Grafana en Kind, recolectando `/api/metrics`.
-2. Dashboard con solicitudes, errores y latencia; observar un Rolling Update.
-3. SLI, SLO, presupuesto de error, fallo controlado y runbook SRE.
-4. Análisis de incidentes asistido por IA.
+1. SLI y SLO de disponibilidad y latencia con reglas de Prometheus.
+2. Presupuesto de error en Grafana.
+3. Alerta accionable y fallo controlado (`make demo-failure`).
+4. Runbook en `docs/runbooks/` y retrospectiva breve.
+5. Después: análisis de incidentes asistido por IA.

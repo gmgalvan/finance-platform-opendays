@@ -32,7 +32,13 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: api
+      # Prometheus descubre y recolecta los pods con estas anotaciones.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: api
           image: ghcr.io/gmgalvan/finance-platform-api
@@ -65,5 +71,11 @@ spec:
               memory: 96Mi
             limits:
               memory: 256Mi
+          # Al apagarse, el pod sigue atendiendo unos segundos mientras
+          # Kubernetes lo retira del Service; así no se cortan conexiones.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           securityContext:
             allowPrivilegeEscalation: false

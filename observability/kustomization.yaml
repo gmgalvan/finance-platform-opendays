@@ -1,0 +1,35 @@
+# Prometheus y Grafana para la demo.
+# Aplicar: kubectl apply -k observability
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: observability
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - prometheus/deployment.yaml
+  - grafana/deployment.yaml
+
+generatorOptions:
+  disableNameSuffixHash: false
+
+configMapGenerator:
+  - name: prometheus-config
+    namespace: monitoring
+    files:
+      - prometheus/prometheus.yml
+  - name: grafana-datasources
+    namespace: monitoring
+    files:
+      - grafana/datasources.yaml
+  - name: grafana-dashboard-providers
+    namespace: monitoring
+    files:
+      - grafana/dashboards.yaml
+  - name: grafana-dashboards
+    namespace: monitoring
+    files:
+      - grafana/dashboards/finance-platform.json

@@ -381,6 +381,108 @@ En un equipo real, esta diferencia se resuelve con GitOps (Argo CD o Flux): el c
 
 ---
 
-## Siguiente: Paso 8 — Observabilidad con Prometheus y Grafana
+## Paso 8 — Observabilidad con Prometheus y Grafana (Stage 8)
 
-Pendiente. Recolectar las métricas de `/api/metrics`, mostrar un dashboard en Grafana y observar el tráfico durante un Rolling Update.
+**Idea:** Kubernetes sabe si los pods están vivos; la observabilidad dice **qué experimenta el usuario**: tráfico, errores y latencia.
+
+- **Prometheus** recolecta: cada 5 s visita `/metrics` en cada pod de la API.
+- **Grafana** muestra: dibuja esas métricas en un dashboard.
+
+Se instalaron con manifiestos propios (≈ 400 MB) en lugar de `kube-prometheus-stack` (≈ 1.5-2 GB), para que cada pieza se pueda mostrar y explicar.
+
+### Archivos
+
+| Archivo | Qué es |
+|---|---|
+| `observability/prometheus/prometheus.yml` | Configuración: descubre pods del namespace `finance` con la anotación `prometheus.io/scrape: "true"` y agrega las etiquetas `pod`, `app` y `version` |
+| `observability/prometheus/deployment.yaml` | ServiceAccount, permisos mínimos (solo listar pods de `finance`), Service y Deployment |
+| `observability/grafana/datasources.yaml` | Conexión de Grafana con Prometheus |
+| `observability/grafana/dashboards/finance-platform.json` | Dashboard versionado en Git |
+| `observability/grafana/deployment.yaml` | Service y Deployment de Grafana (anónimo de solo lectura) |
+| `deploy/kubernetes/api.yaml` | Anotaciones `prometheus.io/*` en los pods de la API |
+| `deploy/kind/cluster.yaml` | Puertos 8090 (app), 3000 (Grafana) y 9090 (Prometheus) |
+| `deploy/kind/traffic.sh` | Tráfico simulado: suscripciones, dashboards, cuentas inexistentes y health |
+
+### Levantar todo con un comando
+
+```bash
+make demo-up      # clúster + app + Prometheus + Grafana + smoke test (≈ 3 min)
+```
+
+| Servicio | URL |
+|---|---|
+| Finance Platform | http://localhost:8090 |
+| Grafana | http://localhost:3000 (abre directo el dashboard; usuario admin: `admin` / `opendays`) |
+| Prometheus | http://localhost:9090/targets (debe mostrar los 2 pods de la API en `UP`) |
+
+Apagar todo: `make demo-down`.
+
+Kind solo publica puertos al crear el clúster. Si un clúster viejo no tiene el 3000 o el 9090, recrearlo con `make demo-down && make demo-up`.
+
+### Dashboard "Finance Platform"
+
+| Panel | Qué responde |
+|---|---|
+| Disponibilidad (5 min) | ¿Qué porcentaje de solicitudes no terminó en error 5xx? |
+| Solicitudes por segundo | ¿Cuánto tráfico hay? |
+| Latencia p95 | ¿Cuánto tarda el 95 % de las solicitudes? |
+| Suscripciones (1 h) | ¿Cuántas suscripciones se crearon? (métrica de negocio) |
+| **Réplicas de la API por versión** | ¿Qué versión está corriendo? Durante un Rolling Update, la anterior baja y la nueva sube |
+| Solicitudes por endpoint | ¿Qué rutas se usan más? |
+| Respuestas por código HTTP | 2xx éxito, 4xx error del cliente, 5xx error del servidor |
+| Latencia p50 y p95 | ¿Cómo cambia el tiempo de respuesta? |
+
+Los paneles excluyen las visitas de Prometheus (`/metrics`) y de los probes de Kubernetes (`/health`) para mostrar solo tráfico de usuarios.
+
+### Demo: un Rolling Update visto en Grafana
+
+```bash
+# Terminal 1: tráfico simulado
+make k8s-traffic
+
+# Terminal 2: cambiar de versión (cualquier sha publicado)
+make k8s-release TAG=sha-123a90d
+make k8s-release                    # regresar a la última de main
+```
+
+En Grafana, el panel **Réplicas de la API por versión** muestra la transición, y **Respuestas por código HTTP** sigue sin 5xx.
+
+Resultado del ensayo (cada 10 s):
+
+```
+hora      sha-123a90d   sha-b683f2e
+20:15:31  -             2
+20:15:41  2             1      ← la nueva sube, la anterior baja
+20:15:51  2             -
+20:16:11  1             2      ← regreso a la versión de main
+20:16:21  -             2
+```
+
+### Lección aprendida: conexiones cortadas durante el Rolling Update
+
+En el primer ensayo, con tráfico continuo, **3 de 434 solicitudes** fallaron con código `000` (conexión cortada, sin respuesta HTTP). No aparecían en los logs de Nginx: nunca llegaron a la app.
+
+**Causa:** al apagar un pod, Kubernetes lo retira del Service de forma asíncrona. Durante un instante, la red todavía le envía conexiones nuevas a un pod que ya se está cerrando.
+
+**Solución:** un `preStop` de 5 segundos en la API y el frontend. El pod sigue atendiendo mientras Kubernetes lo retira del Service, y después se apaga:
+
+```yaml
+lifecycle:
+  preStop:
+    exec:
+      command: ["sleep", "5"]
+```
+
+**Después del arreglo:** 4 releases seguidos con tráfico continuo, **576 de 576 solicitudes respondidas** (0 conexiones cortadas).
+
+**Mensaje para la charla:** sin observabilidad no hubiéramos visto esas 3 fallas. Medir con tráfico real encontró un problema que una prueba simple no detectó.
+
+### CI
+
+El job **Kubernetes** también valida los manifiestos de `observability/` con kubeconform, la configuración de Prometheus con `promtool` y que el dashboard sea JSON válido.
+
+---
+
+## Siguiente: Paso 9 — SRE
+
+Pendiente. SLO de disponibilidad, presupuesto de error, alerta, fallo controlado (`make demo-failure`) y runbook.
