@@ -207,6 +207,26 @@ Ensayos realizados:
 
 El pipeline completo tarda menos de un minuto.
 
+### Stage 5B — Imágenes en GHCR: terminado
+
+Al hacer merge en `main` y con **CI passed** en verde, el job **Publicar imágenes** publica `ghcr.io/gmgalvan/finance-platform-api` y `ghcr.io/gmgalvan/finance-platform-frontend` con las etiquetas `sha-<commit>` y `latest`. Los paquetes son públicos: Kind los descarga sin credenciales.
+
+### Stage 6 — Kubernetes con Kind: desplegado
+
+Clúster local `finance` (Kind, Kubernetes 1.31) con la app en el namespace `finance`:
+
+- PostgreSQL como StatefulSet con volumen persistente.
+- API y frontend como Deployments de 2 réplicas con Rolling Update (`maxUnavailable: 0`).
+- Readiness y liveness probes.
+- Frontend expuesto en `http://localhost:8090`.
+- Versión fijada en `deploy/kubernetes/kustomization.yaml` con `sha-<commit>`.
+
+Verificado: smoke test completo contra Kubernetes y autorecuperación al borrar un pod de la API (reemplazado en ~2 s sin interrumpir `/api/health`).
+
+El CI incluye el job **Kubernetes**: renderiza con Kustomize, valida con kubeconform y rechaza imágenes sin versión fija.
+
+Comandos: `make kind-up`, `make k8s-deploy`, `make k8s-status`, `make k8s-smoke`, `make kind-down`.
+
 ## Decisiones importantes
 
 - Finance Journal y Finance Platform son etapas del mismo producto, no proyectos independientes.
@@ -218,24 +238,14 @@ El pipeline completo tarda menos de un minuto.
 - Los recursos cloud deben destruirse al terminar cada práctica.
 - Todo cambio llega a `main` mediante Pull Request y CI en verde.
 
-## Siguiente etapa — Stage 5B: entrega continua
+## Siguiente etapa — Del PR a Kubernetes
 
-Propuesta para la charla: publicar imágenes en **GitHub Container Registry (GHCR)** en lugar de Amazon ECR. No requiere credenciales de AWS ni genera costos, y las imágenes quedan listas para Kind en Stage 6.
+1. Cambio visible en el dashboard → PR → CI → merge → imagen `sha-<commit>` en GHCR.
+2. Actualizar `newTag` en `deploy/kubernetes/kustomization.yaml` y ejecutar `make k8s-deploy`.
+3. Observar el Rolling Update en vivo.
 
-1. Al hacer merge en `main`, construir las imágenes de frontend y API.
-2. Etiquetarlas con el commit SHA y publicarlas en `ghcr.io/gmgalvan/...`.
-3. Firmar o registrar la procedencia de la imagen (opcional).
-4. Mostrar en la charla que la misma imagen se promueve entre ambientes.
+Después:
 
-El despliegue a AWS mediante ECR + SSM queda como alternativa documentada, no como parte de la demo en vivo.
-
-Después de CD, continuar con:
-
-1. Kubernetes local con Kind.
-2. Prometheus, Grafana, Loki y OpenTelemetry.
-3. SLI, SLO, presupuesto de error y runbook SRE.
-4. Análisis de incidentes asistido por IA.
-
-## Próxima instrucción sugerida
-
-> Implementa Stage 5B: workflow que publique en GHCR las imágenes de frontend y API etiquetadas con el commit SHA al hacer merge en `main`.
+1. Prometheus y Grafana.
+2. SLI, SLO, presupuesto de error, fallo controlado y runbook SRE.
+3. Análisis de incidentes asistido por IA.

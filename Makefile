@@ -1,4 +1,4 @@
-.PHONY: test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
+.PHONY: kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
 
 PYTHON ?= .venv/bin/python
 TEST_DB_URL ?= postgresql://finance:finance_demo@localhost:55432/finance_platform
@@ -29,6 +29,31 @@ test-db-down:
 
 smoke:
 	tests/smoke/smoke.sh http://localhost:8082
+
+# --- Stage 6: Kubernetes con Kind ------------------------------------------
+
+KUSTOMIZE = kubectl kustomize --load-restrictor LoadRestrictionsNone deploy/kubernetes
+
+kind-up:
+	kind create cluster --config deploy/kind/cluster.yaml --wait 120s
+
+kind-down:
+	kind delete cluster --name finance
+
+k8s-render:
+	$(KUSTOMIZE)
+
+k8s-deploy:
+	$(KUSTOMIZE) | kubectl apply -f -
+	kubectl -n finance rollout status statefulset/postgres --timeout=180s
+	kubectl -n finance rollout status deployment/api --timeout=180s
+	kubectl -n finance rollout status deployment/frontend --timeout=180s
+
+k8s-status:
+	kubectl -n finance get pods,services,statefulsets,deployments -o wide
+
+k8s-smoke:
+	tests/smoke/smoke.sh http://localhost:8090
 
 # --- Stages 1-3 --------------------------------------------------------------
 

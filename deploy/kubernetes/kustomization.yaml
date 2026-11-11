@@ -1,0 +1,31 @@
+# Finance Platform en Kubernetes.
+# Renderizar: kubectl kustomize --load-restrictor LoadRestrictionsNone deploy/kubernetes
+# (el permiso es necesario para leer init.sql desde app/stage-2/database).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: finance
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: finance-platform
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - api.yaml
+  - frontend.yaml
+
+configMapGenerator:
+  - name: database-init
+    files:
+      - 001-init.sql=../../app/stage-2/database/init.sql
+
+# Versión desplegada: imágenes publicadas por el CI en GHCR.
+# Para desplegar otra versión, cambia newTag por sha-<commit>.
+images:
+  - name: ghcr.io/gmgalvan/finance-platform-api
+    newTag: sha-befa4ba
+  - name: ghcr.io/gmgalvan/finance-platform-frontend
+    newTag: sha-befa4ba
