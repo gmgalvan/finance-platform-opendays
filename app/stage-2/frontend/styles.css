@@ -185,6 +185,22 @@ a {
   font-size: 0.74rem;
 }
 
+.release-banner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  color: var(--paper);
+  background: var(--forest);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.release-banner strong {
+  color: var(--lime);
+}
+
 main {
   width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
