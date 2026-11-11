@@ -1,6 +1,6 @@
 # Estado y siguientes pasos
 
-Última actualización: 31 de octubre de 2026.
+Última actualización: 10 de noviembre de 2026.
 
 ## Objetivo del proyecto
 
@@ -154,6 +154,59 @@ Esta etapa de la narrativa ya quedó incorporada en Stages 2 y 3:
 
 Por esa razón, el siguiente bloque de implementación es Stage 5 y no hace falta crear otra aplicación para Stage 4.
 
+### Stage 5A — Pruebas y CI para Pull Requests: terminado
+
+Repositorio: https://github.com/gmgalvan/finance-platform-opendays
+
+Pruebas en `tests/`:
+
+| Carpeta | Qué revisa |
+|---|---|
+| `tests/api/` | Validaciones, hash PBKDF2, `/health` y `/metrics` (unitarias) y suscripción + dashboard contra PostgreSQL (integración) |
+| `tests/frontend/` | Enlaces, recursos y anclas locales, `lang`/`title` y sintaxis JavaScript |
+| `tests/infrastructure/` | Políticas de seguridad sobre Terraform: sin SSH, IMDSv2, disco y bucket cifrados, bucket privado |
+| `tests/smoke/smoke.sh` | Recorrido completo contra la aplicación en ejecución |
+
+Comandos locales:
+
+```bash
+make test-setup   # crea .venv con Python 3.12 usando uv
+make test-db-up   # PostgreSQL de pruebas en el puerto 55432 (requiere Docker)
+make test         # pytest + terraform fmt/validate
+make test-db-down
+make smoke        # contra make stage-2-up
+```
+
+Sin PostgreSQL, las pruebas de integración se omiten localmente. En CI se define `REQUIRE_DATABASE=1` para que fallen en lugar de omitirse.
+
+Workflow `.github/workflows/pull-request.yml`, que corre en cada Pull Request y en cada push a `main`:
+
+| Job | Qué hace |
+|---|---|
+| Frontend | Pruebas de `tests/frontend` con Node.js 22 |
+| API + PostgreSQL | Pruebas de `tests/api` con PostgreSQL 17 como servicio |
+| Terraform | `fmt -check`, `validate` y políticas de `tests/infrastructure` |
+| Seguridad | gitleaks (secretos en el historial), pip-audit y dependency review en PRs |
+| Docker + smoke test | Construye las imágenes, levanta las tres capas y ejecuta `smoke.sh` |
+| CI passed | Falla si cualquier job anterior falla; es el check obligatorio |
+
+Protección de `main`:
+
+- `CI passed` es obligatorio y la rama debe estar actualizada.
+- Aplica también a administradores.
+- Sin force push ni borrado de la rama.
+- Conversaciones resueltas antes del merge.
+- No exige aprobaciones porque el proyecto tiene un solo autor.
+
+También están activadas las alertas de Dependabot, que habilitan el Dependency graph requerido por dependency review.
+
+Ensayos realizados:
+
+- PR #1: agrega pruebas y CI. Todos los jobs en verde, merge permitido.
+- PR #2: abre el puerto 22 a `0.0.0.0/0`. `terraform validate` pasa, pero la política `test_ssh_port_is_not_open` falla y GitHub bloquea el merge, incluso para el administrador. Se cerró sin merge.
+
+El pipeline completo tarda menos de un minuto.
+
 ## Decisiones importantes
 
 - Finance Journal y Finance Platform son etapas del mismo producto, no proyectos independientes.
@@ -163,110 +216,26 @@ Por esa razón, el siguiente bloque de implementación es Stage 5 y no hace falt
 - No se procesan pagos reales.
 - Las cuentas, noticias modernas y valores financieros son datos de demostración.
 - Los recursos cloud deben destruirse al terminar cada práctica.
+- Todo cambio llega a `main` mediante Pull Request y CI en verde.
 
-## Siguiente etapa — Stage 5: DevOps y CI/CD
+## Siguiente etapa — Stage 5B: entrega continua
 
-La siguiente implementación debe centrarse primero en **CI para Pull Requests**. Todavía no se debe automatizar un despliegue a Producción.
+Propuesta para la charla: publicar imágenes en **GitHub Container Registry (GHCR)** en lugar de Amazon ECR. No requiere credenciales de AWS ni genera costos, y las imágenes quedan listas para Kind en Stage 6.
 
-### 1. Preparar pruebas locales
+1. Al hacer merge en `main`, construir las imágenes de frontend y API.
+2. Etiquetarlas con el commit SHA y publicarlas en `ghcr.io/gmgalvan/...`.
+3. Firmar o registrar la procedencia de la imagen (opcional).
+4. Mostrar en la charla que la misma imagen se promueve entre ambientes.
 
-Crear:
+El despliegue a AWS mediante ECR + SSM queda como alternativa documentada, no como parte de la demo en vivo.
 
-```text
-tests/
-├── api/
-├── frontend/
-├── infrastructure/
-└── smoke/
-```
-
-Pruebas mínimas:
-
-- Validación de los modelos y endpoints de FastAPI.
-- Creación de una suscripción contra una base de datos de prueba.
-- Comprobación de enlaces y archivos del frontend.
-- Validación de sintaxis JavaScript.
-- `terraform fmt -check` y `terraform validate`.
-- Construcción de las imágenes Docker.
-- Smoke test contra `/api/health`.
-
-### 2. Inicializar Git y conectar GitHub
-
-El directorio todavía no está preparado como repositorio Git del proyecto. Se debe:
-
-1. Crear `.gitignore` en la raíz.
-2. Excluir estados, planes, artefactos y secretos.
-3. Ejecutar `git init`.
-4. Crear el primer commit.
-5. Crear o conectar un repositorio GitHub.
-
-No se deben subir:
-
-- `*.tfstate`
-- `*.tfplan`
-- `.terraform/`
-- `.env`
-- contraseñas o credenciales cloud
-- paquetes generados en `build/`
-
-### 3. Crear CI para Pull Requests
-
-Archivo propuesto:
-
-```text
-.github/workflows/pull-request.yml
-```
-
-El pipeline debe ejecutar:
-
-1. Validaciones de frontend.
-2. Pruebas de API.
-3. Pruebas de infraestructura.
-4. Construcción de imágenes Docker.
-5. Escaneo de dependencias y secretos.
-6. Resultado obligatorio antes del merge.
-
-### 4. Demostración esperada
-
-```text
-Crear rama
-   ↓
-Modificar una parte visible del dashboard
-   ↓
-Abrir Pull Request
-   ↓
-Ejecutar pruebas y seguridad
-   ↓
-Aprobar y hacer merge
-```
-
-### 5. Después de CI
-
-Una vez estable el Pull Request, implementar CD:
-
-- Crear repositorios Amazon ECR mediante Terraform.
-- Publicar imágenes versionadas por commit SHA.
-- Desplegar a AWS mediante SSM, sin SSH.
-- Ejecutar un smoke test posterior al despliegue.
-- Revertir a la versión anterior cuando falle la salud.
-
-Después de CI/CD, continuar con:
+Después de CD, continuar con:
 
 1. Kubernetes local con Kind.
 2. Prometheus, Grafana, Loki y OpenTelemetry.
 3. SLI, SLO, presupuesto de error y runbook SRE.
 4. Análisis de incidentes asistido por IA.
 
-## Definición de terminado para la siguiente sesión
-
-Stage 5A estará terminado cuando:
-
-- Las pruebas puedan ejecutarse con un solo comando local.
-- Un Pull Request ejecute automáticamente el pipeline.
-- Un cambio con pruebas fallidas no pueda aprobarse.
-- No existan secretos o archivos de estado en Git.
-- La charla pueda mostrar rama → PR → CI → aprobación.
-
 ## Próxima instrucción sugerida
 
-> Implementa Stage 5A: pruebas locales, `.gitignore` y workflow de CI para Pull Requests. No despliegues recursos cloud todavía.
+> Implementa Stage 5B: workflow que publique en GHCR las imágenes de frontend y API etiquetadas con el commit SHA al hacer merge en `main`.

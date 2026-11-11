@@ -133,3 +133,19 @@ Después, abrir `http://localhost:8082`. Consulta [docs/stage-2-finance-platform
 El módulo [`infra/terraform/aws-ec2`](./infra/terraform/aws-ec2) despliega Finance Platform en una instancia Amazon Linux 2023. Utiliza un bucket privado para entregar el artefacto, un rol de instancia para SSM y un security group sin acceso SSH.
 
 Las instrucciones de creación, verificación y eliminación se encuentran en [docs/stage-3-aws-ec2.md](./docs/stage-3-aws-ec2.md).
+
+### Stage 5 — Pruebas y CI
+
+Repositorio: https://github.com/gmgalvan/finance-platform-opendays
+
+Cada Pull Request ejecuta GitHub Actions con pruebas de frontend, API con PostgreSQL, validación y políticas de Terraform, escaneo de seguridad y un smoke test con Docker Compose. La rama `main` exige que el check **CI passed** esté en verde antes del merge.
+
+Para ejecutar las pruebas localmente:
+
+```bash
+make test-setup
+make test-db-up   # opcional, requiere Docker
+make test
+```
+
+El detalle de cada job y los ensayos realizados se encuentran en [specs/README.md](./specs/README.md).
