@@ -414,6 +414,7 @@ make demo-up      # clúster + app + Prometheus + Grafana + smoke test (≈ 3 mi
 | Finance Platform | http://localhost:8090 |
 | Grafana | http://localhost:3000 (abre directo el dashboard; usuario admin: `admin` / `opendays`) |
 | Prometheus | http://localhost:9090/targets (debe mostrar los 2 pods de la API en `UP`) |
+| Jaeger | http://localhost:16686 (ver Paso 8B) |
 
 Apagar todo: `make demo-down`.
 
@@ -480,6 +481,71 @@ lifecycle:
 ### CI
 
 El job **Kubernetes** también valida los manifiestos de `observability/` con kubeconform, la configuración de Prometheus con `promtool` y que el dashboard sea JSON válido.
+
+---
+
+## Paso 8B — Trazas con OpenTelemetry y Jaeger
+
+**Idea:** las métricas dicen **cuánto** tarda la API en promedio; una traza dice **por qué** tardó una solicitud concreta, paso por paso.
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `app/stage-2/api/main.py` | OpenTelemetry instrumenta FastAPI y psycopg, y agrega un span manual `hash_password` |
+| `app/stage-2/api/requirements.txt` | Paquetes `opentelemetry-*` |
+| `deploy/docker/stage-2/api.Dockerfile` | `ARG APP_VERSION`: la imagen conoce su versión |
+| `.github/workflows/pull-request.yml` | Al publicar, pasa `APP_VERSION=sha-<commit>` |
+| `deploy/kubernetes/api.yaml` | `OTEL_EXPORTER_OTLP_ENDPOINT` apunta a Jaeger |
+| `observability/jaeger/deployment.yaml` | Jaeger v2 all-in-one (trazas en memoria) |
+| `observability/grafana/datasources.yaml` | Jaeger como segunda fuente de datos en Grafana |
+| `deploy/kind/cluster.yaml` | Puerto 16686 para la interfaz de Jaeger |
+
+El tracing **solo se activa** si existe `OTEL_EXPORTER_OTLP_ENDPOINT`. Sin esa variable (pruebas, Docker Compose), la API funciona igual que antes.
+
+Las llamadas a `/health` y `/metrics` no generan trazas: los probes y Prometheus las hacen cada pocos segundos y solo serían ruido.
+
+`/api/health` ahora también responde la versión:
+
+```bash
+curl localhost:8090/api/health
+# {"status":"ok","service":"finance-api","version":"sha-xxxxxxx","database":"connected"}
+```
+
+### Ver una traza
+
+1. Generar tráfico: `make k8s-traffic` o crear una suscripción desde http://localhost:8090/subscribe.html.
+2. Abrir http://localhost:16686.
+3. **Service:** `finance-api` → **Operation:** `POST /api/subscriptions` → **Find Traces**.
+4. Abrir una traza.
+
+**Resultado del ensayo:**
+
+```
+POST /api/subscriptions          99.7 ms
+  hash_password                  82.4 ms   ← 83 % del tiempo
+  INSERT  (users)                 1.9 ms
+  DELETE  (user_interests)        0.9 ms
+  INSERT  (user_interests)        0.9 ms
+  INSERT  (subscriptions)         0.9 ms
+```
+
+Al hacer clic en un `INSERT`, Jaeger muestra la consulta SQL completa.
+
+**Mensaje para la charla (≈ 30 s):** la suscripción tarda 100 ms y la base de datos no es la culpable. El 83 % del tiempo es el hash de la contraseña, y es **a propósito**: PBKDF2 con 210 000 iteraciones hace costoso adivinar contraseñas robadas. Sin la traza, alguien podría "optimizar" la base de datos sin ningún efecto.
+
+### Probar una imagen local antes del PR
+
+Para validar cambios de la API sin pasar por GHCR:
+
+```bash
+docker build -f deploy/docker/stage-2/api.Dockerfile --build-arg APP_VERSION=sha-local \
+  -t ghcr.io/gmgalvan/finance-platform-api:sha-local .
+kind load docker-image ghcr.io/gmgalvan/finance-platform-api:sha-local --name finance
+kubectl -n finance set image deployment/api api=ghcr.io/gmgalvan/finance-platform-api:sha-local
+```
+
+Después, regresar a una versión publicada con `make k8s-release`.
 
 ---
 

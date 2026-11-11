@@ -1,6 +1,10 @@
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
+# El CI pasa sha-<commit>; se ve en /api/health y en las trazas.
+ARG APP_VERSION=dev
+
+ENV APP_VERSION=${APP_VERSION} \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app

@@ -246,7 +246,15 @@ Prometheus v3.1 y Grafana 11.4 en el namespace `monitoring`, instalados con mani
 
 Hallazgo: con tráfico continuo, el Rolling Update cortaba ≈ 0.7 % de las conexiones (3/434) porque los pods se apagaban antes de salir del Service. Se agregó `preStop: sleep 5` a la API y al frontend; después, 4 releases con 576/576 respuestas correctas.
 
-Loki (logs) y OpenTelemetry/Jaeger (trazas) quedan fuera de la demo por ahora.
+### Stage 8B — Trazas con OpenTelemetry y Jaeger: terminado
+
+La API envía trazas por OTLP/HTTP a Jaeger v2 (`localhost:16686`) cuando existe `OTEL_EXPORTER_OTLP_ENDPOINT`. Se instrumentan FastAPI y psycopg, y hay un span manual `hash_password`. `/health` y `/metrics` se excluyen.
+
+La imagen recibe `APP_VERSION=sha-<commit>` en el CI; aparece en `/api/health` y como `service.version` en las trazas.
+
+Ensayo: en `POST /api/subscriptions` (≈ 100 ms), `hash_password` ocupa ≈ 82 ms y cada consulta SQL ≈ 1 ms.
+
+Loki (logs) queda fuera de la demo.
 
 ## Decisiones importantes
 

@@ -13,6 +13,7 @@ def test_health_checks_database(client, database):
     assert response.json() == {
         "status": "ok",
         "service": "finance-api",
+        "version": "dev",
         "database": "connected",
     }
 
@@ -68,3 +69,19 @@ def test_dashboard_returns_404_for_unknown_account(client, clean_database):
     response = client.get("/api/dashboard", params={"email": "nadie@example.com"})
 
     assert response.status_code == 404
+
+
+def test_subscription_trace_includes_password_hash_span(client, clean_database, subscription_payload):
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+
+    client.post("/api/subscriptions", json=subscription_payload)
+
+    assert "hash_password" in [span.name for span in exporter.get_finished_spans()]

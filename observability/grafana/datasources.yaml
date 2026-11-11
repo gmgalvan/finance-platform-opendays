@@ -8,3 +8,8 @@ datasources:
     isDefault: true
     jsonData:
       timeInterval: 5s
+  - name: Jaeger
+    uid: jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger.monitoring.svc:16686
