@@ -792,6 +792,88 @@ Comprueban que: sin errores no hay alerta; con 20 % de errores sí; y los errore
 
 ---
 
-## Siguiente: Paso 10 — Operaciones asistidas por IA
+## Paso 10 — Operaciones asistidas por IA
 
-Pendiente. Entregar a un asistente las métricas, alertas y trazas del incidente, pedirle un resumen y posibles causas sin permiso para desplegar, y evaluar su respuesta contra la causa real.
+**Idea:** la IA ayuda a **entender** un incidente más rápido, pero **no decide**: no despliega, no hace rollback, no toca nada. Y antes de confiar en ella, **se evalúa** con incidentes cuya causa ya se conoce.
+
+### Piezas
+
+| Archivo | Qué hace |
+|---|---|
+| `app/ai-assistant/collect_context.py` | Junta, **solo leyendo**, alertas y métricas (Prometheus), trazas con error de los últimos 10 min (Jaeger) y estado de Kubernetes (deployments, historial, pods, eventos, logs) |
+| `app/ai-assistant/analyst.py` | Envía ese reporte a **Claude Haiku 5.5** y recibe un diagnóstico con formato fijo: resumen, impacto, servicio, causa, evidencia, acciones y preguntas abiertas |
+| `app/ai-assistant/evaluate.py` | Califica al analista con casos reales y mide tiempo, tokens y costo |
+| `app/ai-assistant/evals/` | Dos casos grabados de un incidente real: **sistema sano** y **cambio de configuración en market-data** |
+| `tests/ai_assistant/` | Pruebas con respuestas simuladas; el CI las corre sin llamar a la API |
+
+### Límites de seguridad
+
+- **Sin herramientas:** el modelo solo recibe texto y responde. No puede ejecutar comandos aunque quisiera.
+- **Formato fijo:** la respuesta se valida contra un esquema (JSON Schema / Pydantic).
+- **Aprobación humana:** toda acción que cambia el sistema (rollback, escalar, cambiar configuración) se marca como "requiere aprobación humana".
+- **Logs como datos:** las instrucciones del sistema le piden tratar logs y trazas como datos, nunca como órdenes.
+- **Datos que no se envían:** las variables que vienen de un Secret de Kubernetes no se incluyen en el reporte.
+
+### Dos formas de llamar a Claude
+
+| `AI_BACKEND` | Cómo | Necesita |
+|---|---|---|
+| `claude-code` (por defecto) | Claude Code sin interfaz: `claude -p --tools "" --json-schema ...` | Claude Code instalado y con sesión iniciada; usa la suscripción |
+| `api` | API de Anthropic con el SDK de Python (`client.messages.parse`) | `ANTHROPIC_API_KEY` en `.env` y saldo en la consola |
+
+Con `AI_BACKEND=api`, si la llave no está asignada a un workspace, agregar `ANTHROPIC_WORKSPACE_ID=wrkspc_...` al `.env`. El script muestra un mensaje claro si falta saldo, si la llave no es válida o si falta el workspace.
+
+### Comandos
+
+```bash
+make ai-analyze                 # recolecta en vivo y analiza
+make ai-eval                    # evaluación: cada caso 3 veces
+make ai-eval REPETICIONES=1     # más rápido
+AI_BACKEND=api make ai-analyze  # con la API key en lugar de la suscripción
+AI_MODEL=claude-sonnet-5-5 make ai-eval   # comparar con otro modelo
+```
+
+### Guion de la demo (≈ 3 min, después del Paso 9)
+
+```bash
+make k8s-traffic &
+make demo-failure        # esperar la alerta (≈ 2 min)
+make ai-analyze          # ≈ 30-40 s
+make demo-recover        # la persona decide y ejecuta
+```
+
+### Resultado del ensayo en vivo
+
+```
+[ 60s] make demo-failure
+[173s] 🔥 alerta firing → make ai-analyze
+       Servicio:       market-data (origen); finance-api y finance-nginx propagan el 503
+       Causa probable: revisión 8 del Deployment "Config: FAILURE_RATE=0.5"
+       Acción:         kubectl -n finance rollout undo deployment/market-data --to-revision=7
+                       [⚠️ requiere aprobación humana]
+       38 s · 53 009 + 10 229 tokens · ≈ $0.0096 (equivalente; incluido en la suscripción)
+[214s] make demo-recover
+[263s] ✅ alerta resuelta
+```
+
+Además notó que la imagen no cambió (la causa es configuración, no código), sugirió verificar primero con un comando de solo lectura y preguntó si el cambio era un experimento planeado.
+
+### Resultado de la evaluación
+
+| | |
+|---|---|
+| Modelo | `claude-haiku-5-5` vía `claude-code` |
+| Puntuación | **9/9 revisiones (100 %)** |
+| Latencia | ≈ 25-30 s por análisis |
+| Costo | ≈ $0.004 por análisis (equivalente) |
+
+Revisiones del caso de incidente: detecta el incidente, identifica market-data, encuentra `FAILURE_RATE`, recomienda rollback, no culpa a la base de datos y pide aprobación humana. Caso sano: no inventa un incidente ni recomienda cambios.
+
+### Lecciones del ensayo
+
+1. **La IA encontró fallas en nuestras herramientas.** En su primer análisis señaló trazas repetidas en el reporte, y en un comando de solo lectura usó una métrica inventada. Corregimos el recolector (sin duplicados) y le dimos las consultas PromQL reales.
+2. **También hay que evaluar al evaluador.** La primera evaluación dio 89 %: la revisión "no culpa a otros componentes" fallaba porque el modelo decía, correctamente, que nginx y la API *propagan* el error. La revisión estaba mal, no el modelo; ahora solo falla si la causa apunta a la base de datos (y una prueba confirma que sí detecta ese error).
+3. **El evaluador no lo revisa todo.** Revisa servicio, causa, acción y aprobación, pero no si cada comando sugerido es correcto. Por eso las acciones pasan siempre por una persona.
+4. **Elegir modelo se mide.** `AI_MODEL=claude-sonnet-5-5 make ai-eval` compara calidad, tiempo y costo con los mismos casos.
+
+**Mensaje para la charla:** la IA leyó en 30 segundos lo que a una persona le toma un par de minutos de runbook, y encontró la causa correcta. Pero no tiene permiso para tocar nada, y antes de confiar en ella la evaluamos con un incidente cuya respuesta ya conocíamos, y así descubrimos errores tanto en sus herramientas como en nuestro evaluador.

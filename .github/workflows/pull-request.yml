@@ -71,6 +71,8 @@ jobs:
         run: pytest tests/api -v
       - name: Pruebas de market-data
         run: pytest tests/market_data -v
+      - name: Pruebas del asistente de IA (sin llamar a la API)
+        run: pytest tests/ai_assistant -v
 
   infrastructure:
     name: Terraform
@@ -116,6 +118,7 @@ jobs:
           pip install pip-audit
           pip-audit -r app/stage-2/api/requirements.txt
           pip-audit -r app/stage-2/market-data/requirements.txt
+          pip-audit -r app/ai-assistant/requirements.txt
       - name: Revisión de dependencias nuevas del PR
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4

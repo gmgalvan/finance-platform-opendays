@@ -1,4 +1,4 @@
-.PHONY: demo-failure demo-recover alerts demo-up demo-down obs-deploy obs-status k8s-traffic kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke k8s-release k8s-rollback k8s-history k8s-watch k8s-ping test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
+.PHONY: ai-analyze ai-eval demo-failure demo-recover alerts demo-up demo-down obs-deploy obs-status k8s-traffic kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke k8s-release k8s-rollback k8s-history k8s-watch k8s-ping test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
 
 PYTHON ?= .venv/bin/python
 TEST_DB_URL ?= postgresql://finance:finance_demo@localhost:55432/finance_platform
@@ -124,6 +124,15 @@ alerts:
 		alerts=json.load(sys.stdin)['data']['alerts']; \
 		print('Sin alertas activas' if not alerts else ''); \
 		[print(f\"{a['state']:8} {a['labels']['alertname']:20} {a['annotations'].get('summary','')}\") for a in alerts]"
+
+# --- Stage 10: operaciones asistidas por IA -----------------------------------
+# AI_BACKEND=claude-code (por defecto, usa la suscripción) o AI_BACKEND=api (usa .env)
+
+ai-analyze:
+	cd app/ai-assistant && ../../$(PYTHON) analyst.py
+
+ai-eval:
+	cd app/ai-assistant && ../../$(PYTHON) evaluate.py --repeticiones $(or $(REPETICIONES),3)
 
 # --- Todo junto, para el día de la charla ------------------------------------
 
