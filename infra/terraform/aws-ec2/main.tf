@@ -123,6 +123,14 @@ resource "aws_security_group" "web" {
     cidr_blocks = [var.http_allowed_cidr]
   }
 
+  ingress {
+    description = "SSH temporal para depurar"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     description = "Outbound access for package and container downloads"
     from_port   = 0
