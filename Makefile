@@ -1,4 +1,36 @@
-.PHONY: serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
+.PHONY: test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
+
+PYTHON ?= .venv/bin/python
+TEST_DB_URL ?= postgresql://finance:finance_demo@localhost:55432/finance_platform
+
+# --- Stage 5: pruebas -------------------------------------------------------
+
+test-setup:
+	uv venv --python 3.12 .venv
+	uv pip install --python $(PYTHON) -r tests/requirements.txt
+
+test:
+	DATABASE_URL=$(TEST_DB_URL) $(PYTHON) -m pytest
+	$(MAKE) test-infra
+
+test-infra:
+	terraform fmt -check -recursive infra/terraform
+	terraform -chdir=infra/terraform/aws-ec2 init -backend=false -input=false >/dev/null
+	terraform -chdir=infra/terraform/aws-ec2 validate
+
+test-db-up:
+	docker run --detach --rm --name finance-test-db \
+		-e POSTGRES_DB=finance_platform -e POSTGRES_USER=finance -e POSTGRES_PASSWORD=finance_demo \
+		-p 55432:5432 postgres:17-alpine
+	until docker exec finance-test-db pg_isready -h 127.0.0.1 -U finance -d finance_platform >/dev/null 2>&1; do sleep 1; done
+
+test-db-down:
+	docker stop finance-test-db
+
+smoke:
+	tests/smoke/smoke.sh http://localhost:8082
+
+# --- Stages 1-3 --------------------------------------------------------------
 
 serve-static:
 	python3 -m http.server 8080 --directory app/frontend
