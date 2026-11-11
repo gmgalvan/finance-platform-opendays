@@ -148,4 +148,4 @@ make test-db-up   # opcional, requiere Docker
 make test
 ```
 
-El detalle de cada job y los ensayos realizados se encuentran en [specs/README.md](./specs/README.md).
+El detalle de cada job se encuentra en [specs/README.md](./specs/README.md) y el paso a paso para repetir todo en [docs/guia-de-ejecucion.md](./docs/guia-de-ejecucion.md).
