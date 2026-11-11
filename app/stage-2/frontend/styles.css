@@ -576,6 +576,19 @@ dialog h2 {
   font-weight: 500;
 }
 
+.quotes-status {
+  margin: 0.8rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.quotes-status.live::before {
+  content: "●";
+  margin-right: 0.35rem;
+  color: var(--forest-2);
+}
+
 .positive {
   color: var(--forest-2);
   font-weight: 750;

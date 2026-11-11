@@ -16,6 +16,7 @@ resources:
   - postgres.yaml
   - api.yaml
   - frontend.yaml
+  - market-data.yaml
 
 configMapGenerator:
   - name: database-init
@@ -28,4 +29,6 @@ images:
   - name: ghcr.io/gmgalvan/finance-platform-api
     newTag: sha-74c5574
   - name: ghcr.io/gmgalvan/finance-platform-frontend
+    newTag: sha-74c5574
+  - name: ghcr.io/gmgalvan/finance-platform-market-data
     newTag: sha-74c5574

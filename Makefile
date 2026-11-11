@@ -35,7 +35,7 @@ smoke:
 KUSTOMIZE = kubectl kustomize --load-restrictor LoadRestrictionsNone deploy/kubernetes
 # make k8s-deploy TAG=sha-<commit> despliega otra versión sin editar kustomization.yaml
 TAG ?=
-RENDER = $(KUSTOMIZE)$(if $(TAG), | sed -E 's|(ghcr.io/gmgalvan/finance-platform-[a-z]+):sha-[0-9a-f]+|\1:$(TAG)|')
+RENDER = $(KUSTOMIZE)$(if $(TAG), | sed -E 's|(ghcr.io/gmgalvan/finance-platform-[a-z-]+):sha-[0-9a-f]+|\1:$(TAG)|')
 
 kind-up:
 	kind create cluster --config deploy/kind/cluster.yaml --wait 120s
@@ -51,6 +51,7 @@ k8s-deploy:
 	kubectl -n finance rollout status statefulset/postgres --timeout=180s
 	kubectl -n finance rollout status deployment/api --timeout=180s
 	kubectl -n finance rollout status deployment/frontend --timeout=180s
+	kubectl -n finance rollout status deployment/market-data --timeout=180s
 
 k8s-status:
 	kubectl -n finance get pods,services,statefulsets,deployments -o wide
@@ -65,15 +66,17 @@ k8s-release:
 k8s-rollback:
 	kubectl -n finance rollout undo deployment/api
 	kubectl -n finance rollout undo deployment/frontend
+	kubectl -n finance rollout undo deployment/market-data
 	kubectl -n finance rollout status deployment/api --timeout=180s
 	kubectl -n finance rollout status deployment/frontend --timeout=180s
+	kubectl -n finance rollout status deployment/market-data --timeout=180s
 
 k8s-history:
 	kubectl -n finance rollout history deployment/frontend
 
 # Para la demo: pods en vivo en una terminal y disponibilidad en otra
 k8s-watch:
-	kubectl -n finance get pods -l 'app.kubernetes.io/name in (api,frontend)' -w
+	kubectl -n finance get pods -l 'app.kubernetes.io/name in (api,frontend,market-data)' -w
 
 k8s-ping:
 	@while true; do \

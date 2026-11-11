@@ -6,6 +6,7 @@ import secrets
 import time
 from contextlib import contextmanager
 
+import httpx
 import psycopg
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from opentelemetry import trace
@@ -18,6 +19,7 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql://finance:finance_demo@db:5432/finance_platform",
 )
+MARKET_DATA_URL = os.environ.get("MARKET_DATA_URL", "http://market-data:8000")
 ALLOWED_TOPICS = {"Mercados", "Economía", "Finanzas personales", "Tecnología"}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
@@ -50,6 +52,7 @@ def configure_tracing(application: FastAPI) -> bool:
 
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
@@ -67,6 +70,8 @@ def configure_tracing(application: FastAPI) -> bool:
     trace.set_tracer_provider(provider)
 
     PsycopgInstrumentor().instrument(enable_commenter=False)
+    # Propaga la traza en las llamadas HTTP a market-data.
+    HTTPXClientInstrumentor().instrument()
     # Los probes y Prometheus llaman /health y /metrics cada pocos segundos:
     # no aportan a las trazas y llenarían Jaeger de ruido.
     FastAPIInstrumentor.instrument_app(application, excluded_urls="health,metrics")
@@ -248,3 +253,25 @@ def get_dashboard(email: str):
             topics = [row["topic"] for row in cursor.fetchall()]
 
     return {"user": {**user, "topics": topics}}
+
+
+def market_data_client() -> httpx.Client:
+    return httpx.Client(timeout=2.0)
+
+
+@app.get("/api/market/quotes")
+def get_market_quotes():
+    """Cotizaciones del servicio market-data.
+
+    Si market-data falla, responde 503 y el resto de la API sigue funcionando.
+    """
+    try:
+        with market_data_client() as client:
+            response = client.get(f"{MARKET_DATA_URL}/quotes")
+            response.raise_for_status()
+    except httpx.HTTPError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="El servicio de cotizaciones no está disponible",
+        ) from error
+    return response.json()

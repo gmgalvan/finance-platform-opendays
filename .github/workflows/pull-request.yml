@@ -69,6 +69,8 @@ jobs:
       - run: pip install -r tests/requirements.txt
       - name: Pruebas unitarias y de integración
         run: pytest tests/api -v
+      - name: Pruebas de market-data
+        run: pytest tests/market_data -v
 
   infrastructure:
     name: Terraform
@@ -113,6 +115,7 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit -r app/stage-2/api/requirements.txt
+          pip-audit -r app/stage-2/market-data/requirements.txt
       - name: Revisión de dependencias nuevas del PR
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
@@ -192,7 +195,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        component: [api, frontend]
+        component: [api, frontend, market-data]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

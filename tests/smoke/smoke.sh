@@ -39,6 +39,7 @@ check "Crear suscripción" curl -fsS -X POST "${BASE_URL}/api/subscriptions" \
   -H 'Content-Type: application/json' \
   -d "{\"name\":\"Smoke Test\",\"email\":\"${EMAIL}\",\"password\":\"smoke-test-123\",\"topics\":[\"Mercados\"]}"
 check "Leer dashboard" bash -c "curl -fsS '${BASE_URL}/api/dashboard?email=${EMAIL}' | grep -q 'finance_plus'"
+check "Cotizaciones desde market-data" bash -c "curl -fsS '${BASE_URL}/api/market/quotes' | grep -q '\"source\":\"market-data\"'"
 check "Métricas Prometheus" bash -c "curl -fsS '${BASE_URL}/api/metrics' | grep -q finance_api_requests_total"
 
 echo "Smoke test completado"
