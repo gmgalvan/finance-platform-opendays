@@ -24,10 +24,13 @@ while true; do
       -d "{\"name\":\"${name}\",\"email\":\"${email}\",\"password\":\"demo-password\",\"topics\":[${topic}]}")
     EMAILS+=("$email")
     label="POST /api/subscriptions"
-  elif (( roll < 8 )); then
+  elif (( roll < 5 )); then
     email="${EMAILS[RANDOM % ${#EMAILS[@]}]}"
     code=$(request "${BASE_URL}/api/dashboard?email=${email}")
     label="GET  /api/dashboard"
+  elif (( roll < 8 )); then
+    code=$(request "${BASE_URL}/api/market/quotes")
+    label="GET  /api/market/quotes"
   elif (( roll < 9 )); then
     code=$(request "${BASE_URL}/api/dashboard?email=nadie$((RANDOM))@example.com")
     label="GET  /api/dashboard (cuenta inexistente)"

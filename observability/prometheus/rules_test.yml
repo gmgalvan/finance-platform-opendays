@@ -1,0 +1,50 @@
+# Pruebas unitarias de las alertas: promtool test rules rules_test.yml
+# Simulan series de métricas y comprueban qué alertas se disparan.
+rule_files:
+  - rules.yml
+
+evaluation_interval: 15s
+
+tests:
+  # 100 solicitudes/min sin errores: ninguna alerta.
+  - interval: 15s
+    input_series:
+      - series: 'finance_api_requests_total{path="/api/dashboard", status="200"}'
+        values: "0+25x40"
+      - series: 'finance_api_requests_total{path="/api/market/quotes", status="503"}'
+        values: "0+0x40"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: AltaTasaDeErrores
+        exp_alerts: []
+
+  # 20 % de errores durante varios minutos: la alerta se dispara.
+  - interval: 15s
+    input_series:
+      - series: 'finance_api_requests_total{path="/api/dashboard", status="200"}'
+        values: "0+20x40"
+      - series: 'finance_api_requests_total{path="/api/market/quotes", status="503"}'
+        values: "0+5x40"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: AltaTasaDeErrores
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              team: finance-platform
+            exp_annotations:
+              summary: "La API consume el presupuesto de error 20.0 veces más rápido de lo permitido"
+              description: "Más del 5 % de las solicitudes de usuarios terminan en error 5xx (SLO: 99 % de disponibilidad)."
+              runbook_url: https://github.com/gmgalvan/finance-platform-opendays/blob/main/docs/runbooks/alta-tasa-de-errores.md
+
+  # Los errores de /health (probes) no cuentan para el SLO.
+  - interval: 15s
+    input_series:
+      - series: 'finance_api_requests_total{path="/api/dashboard", status="200"}'
+        values: "0+20x40"
+      - series: 'finance_api_requests_total{path="/health", status="503"}'
+        values: "0+20x40"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: AltaTasaDeErrores
+        exp_alerts: []

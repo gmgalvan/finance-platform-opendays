@@ -1,4 +1,4 @@
-.PHONY: demo-up demo-down obs-deploy obs-status k8s-traffic kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke k8s-release k8s-rollback k8s-history k8s-watch k8s-ping test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
+.PHONY: demo-failure demo-recover alerts demo-up demo-down obs-deploy obs-status k8s-traffic kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke k8s-release k8s-rollback k8s-history k8s-watch k8s-ping test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
 
 PYTHON ?= .venv/bin/python
 TEST_DB_URL ?= postgresql://finance:finance_demo@localhost:55432/finance_platform
@@ -94,12 +94,36 @@ obs-deploy:
 	kubectl apply -k observability
 	kubectl -n monitoring rollout status deployment/prometheus --timeout=180s
 	kubectl -n monitoring rollout status deployment/grafana --timeout=180s
-	@echo "Grafana:    http://localhost:3000  (anónimo de solo lectura; admin / opendays)"
-	@echo "Prometheus: http://localhost:9090/targets"
-	@echo "Jaeger:     http://localhost:16686"
+	kubectl -n monitoring rollout status deployment/alertmanager --timeout=180s
+	@echo "Grafana:      http://localhost:3000  (anónimo de solo lectura; admin / opendays)"
+	@echo "Prometheus:   http://localhost:9090/targets"
+	@echo "Jaeger:       http://localhost:16686"
+	@echo "Alertmanager: http://localhost:9093"
 
 obs-status:
 	kubectl -n monitoring get pods,services
+
+# --- Stage 9: SRE --------------------------------------------------------------
+
+# Simula un mal cambio de configuración: market-data falla el 50 % de las veces.
+demo-failure:
+	kubectl -n finance set env deployment/market-data FAILURE_RATE=0.5
+	kubectl -n finance annotate deployment/market-data --overwrite \
+		"kubernetes.io/change-cause=Config: FAILURE_RATE=0.5"
+	kubectl -n finance rollout status deployment/market-data --timeout=120s
+	@echo "Fallo activado. La alerta AltaTasaDeErrores debería dispararse en 1-2 minutos (con tráfico)."
+
+# Mitigación del runbook: regresar market-data a la revisión anterior.
+demo-recover:
+	kubectl -n finance rollout undo deployment/market-data
+	kubectl -n finance rollout status deployment/market-data --timeout=120s
+	@echo "Rollback aplicado. La alerta debería resolverse en 1-2 minutos."
+
+alerts:
+	@curl -s localhost:9090/api/v1/alerts | python3 -c "import json,sys; \
+		alerts=json.load(sys.stdin)['data']['alerts']; \
+		print('Sin alertas activas' if not alerts else ''); \
+		[print(f\"{a['state']:8} {a['labels']['alertname']:20} {a['annotations'].get('summary','')}\") for a in alerts]"
 
 # --- Todo junto, para el día de la charla ------------------------------------
 
@@ -109,6 +133,7 @@ demo-up: kind-up k8s-deploy obs-deploy k8s-smoke
 	@echo "Grafana:    http://localhost:3000"
 	@echo "Prometheus: http://localhost:9090"
 	@echo "Jaeger:     http://localhost:16686"
+	@echo "Alertmanager: http://localhost:9093"
 
 demo-down: kind-down
 

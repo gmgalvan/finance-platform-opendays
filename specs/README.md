@@ -273,6 +273,17 @@ Ensayo: traza `Cargar cotizaciones` con 4 servicios (`finance-web → finance-ng
 
 Loki (logs) queda fuera de la demo.
 
+### Stage 9 — SRE: terminado
+
+- SLO: 99 % de disponibilidad y 95 % de solicitudes en menos de 500 ms. Reglas de Prometheus para SLI, velocidad de consumo y presupuesto de error (ventanas cortas para la demo).
+- Alertas `AltaTasaDeErrores` (page) y `LatenciaAlta` (ticket), con runbook enlazado y pruebas unitarias con `promtool test rules`.
+- Alertmanager en `localhost:9093` (agrupación e inhibición).
+- Fila **SLO** en Grafana; el dashboard se genera con `observability/grafana/generate_dashboard.py` y el CI verifica que coincida.
+- Fallo controlado: `make demo-failure` (`FAILURE_RATE=0.5` en market-data) y `make demo-recover` (rollback).
+- Runbooks y plantilla de retrospectiva en `docs/runbooks/`.
+
+Ensayo: alerta en 120 s después del fallo, rollback 18 s después de la alerta, alerta resuelta 56 s después del rollback. Suscripciones y dashboard no se afectaron.
+
 ## Decisiones importantes
 
 - Finance Journal y Finance Platform son etapas del mismo producto, no proyectos independientes.
@@ -284,10 +295,8 @@ Loki (logs) queda fuera de la demo.
 - Los recursos cloud deben destruirse al terminar cada práctica.
 - Todo cambio llega a `main` mediante Pull Request y CI en verde.
 
-## Siguiente etapa — SRE
+## Siguiente etapa — Operaciones asistidas por IA
 
-1. SLI y SLO de disponibilidad y latencia con reglas de Prometheus.
-2. Presupuesto de error en Grafana.
-3. Alerta accionable y fallo controlado (`make demo-failure`).
-4. Runbook en `docs/runbooks/` y retrospectiva breve.
-5. Después: análisis de incidentes asistido por IA.
+1. Recolectar el contexto del incidente: alertas, métricas, trazas con error y `rollout history`.
+2. Pedir a un modelo un resumen y posibles causas, sin permisos para desplegar.
+3. Evaluar la respuesta contra la causa real (`FAILURE_RATE=0.5`) y medir latencia, tokens y costo.

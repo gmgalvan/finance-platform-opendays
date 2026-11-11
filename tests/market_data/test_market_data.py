@@ -15,6 +15,7 @@ import market_data  # noqa: E402
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(market_data, "SLOW_RESPONSE_RATE", 0.0)
+    monkeypatch.setattr(market_data, "FAILURE_RATE", 0.0)
     return TestClient(market_data.app)
 
 
@@ -53,3 +54,12 @@ def test_metrics_count_quote_requests(client):
 
     assert response.status_code == 200
     assert 'market_data_requests_total{method="GET",path="/quotes",status="200"}' in response.text
+
+
+def test_injected_failure_returns_500(client, monkeypatch):
+    monkeypatch.setattr(market_data, "FAILURE_RATE", 1.0)
+
+    response = client.get("/quotes")
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "El proveedor de datos no respondió"

@@ -1,0 +1,21 @@
+# Alertmanager recibe las alertas de Prometheus, las agrupa y decide a quién
+# avisar. En un equipo real, "guardia" enviaría a PagerDuty, Slack o correo;
+# en la demo las alertas se ven en http://localhost:9093.
+route:
+  receiver: guardia
+  group_by: [alertname]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+  routes:
+    - matchers: [severity="ticket"]
+      receiver: tickets
+
+receivers:
+  - name: guardia
+  - name: tickets
+
+# Si la API ya está en alerta por errores, no avisar además por latencia.
+inhibit_rules:
+  - source_matchers: [alertname="AltaTasaDeErrores"]
+    target_matchers: [alertname="LatenciaAlta"]
