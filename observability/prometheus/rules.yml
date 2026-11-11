@@ -1,0 +1,74 @@
+# SLI, SLO y alertas de Finance Platform.
+#
+# SLO de disponibilidad: 99 % de las solicitudes de usuarios sin error 5xx.
+# SLO de latencia:       95 % de las solicitudes en menos de 500 ms.
+#
+# En producción el SLO se evalúa en 30 días y las alertas usan ventanas de
+# 1 h / 6 h. Para que la demo se vea en minutos, aquí se usan ventanas cortas.
+
+groups:
+  - name: finance-sli
+    interval: 15s
+    rules:
+      # --- Disponibilidad: proporción de solicitudes sin 5xx ---------------
+      - record: sli:availability:ratio_rate1m
+        expr: |
+          1 - (
+            (sum(rate(finance_api_requests_total{path!~"/metrics|/health", status=~"5.."}[1m])) or vector(0))
+            / sum(rate(finance_api_requests_total{path!~"/metrics|/health"}[1m]))
+          )
+      - record: sli:availability:ratio_rate5m
+        expr: |
+          1 - (
+            (sum(rate(finance_api_requests_total{path!~"/metrics|/health", status=~"5.."}[5m])) or vector(0))
+            / sum(rate(finance_api_requests_total{path!~"/metrics|/health"}[5m]))
+          )
+      - record: sli:availability:ratio_rate1h
+        expr: |
+          1 - (
+            (sum(rate(finance_api_requests_total{path!~"/metrics|/health", status=~"5.."}[1h])) or vector(0))
+            / sum(rate(finance_api_requests_total{path!~"/metrics|/health"}[1h]))
+          )
+
+      # --- Latencia: proporción de solicitudes en menos de 500 ms ----------
+      - record: sli:latency:ratio_rate5m
+        expr: |
+          sum(rate(finance_api_request_duration_seconds_bucket{path!~"/metrics|/health", le="0.5"}[5m]))
+          / sum(rate(finance_api_request_duration_seconds_count{path!~"/metrics|/health"}[5m]))
+
+      # --- Presupuesto de error (SLO 99 % → se puede fallar el 1 %) -------
+      # Velocidad de consumo: 1 = se gasta justo al ritmo permitido;
+      # 10 = se gasta diez veces más rápido.
+      - record: slo:availability:burn_rate1m
+        expr: (1 - sli:availability:ratio_rate1m) / 0.01
+      - record: slo:availability:burn_rate5m
+        expr: (1 - sli:availability:ratio_rate5m) / 0.01
+      # Presupuesto restante en la última hora (1 = intacto, 0 = agotado).
+      - record: slo:availability:error_budget_remaining1h
+        expr: clamp_min(1 - (1 - sli:availability:ratio_rate1h) / 0.01, 0)
+
+  - name: finance-alerts
+    rules:
+      - alert: AltaTasaDeErrores
+        # Dos ventanas: la de 5 min confirma que no es un pico aislado y la de
+        # 1 min permite que la alerta se resuelva en cuanto se arregla.
+        expr: slo:availability:burn_rate5m > 5 and slo:availability:burn_rate1m > 5
+        for: 1m
+        labels:
+          severity: page
+          team: finance-platform
+        annotations:
+          summary: "La API consume el presupuesto de error {{ $value | printf \"%.1f\" }} veces más rápido de lo permitido"
+          description: "Más del 5 % de las solicitudes de usuarios terminan en error 5xx (SLO: 99 % de disponibilidad)."
+          runbook_url: https://github.com/gmgalvan/finance-platform-opendays/blob/main/docs/runbooks/alta-tasa-de-errores.md
+
+      - alert: LatenciaAlta
+        expr: sli:latency:ratio_rate5m < 0.95
+        for: 2m
+        labels:
+          severity: ticket
+          team: finance-platform
+        annotations:
+          summary: "Solo el {{ $value | humanizePercentage }} de las solicitudes responde en menos de 500 ms"
+          description: "El SLO de latencia pide que el 95 % responda en menos de 500 ms."
+          runbook_url: https://github.com/gmgalvan/finance-platform-opendays/blob/main/docs/runbooks/latencia-alta.md

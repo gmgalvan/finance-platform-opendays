@@ -3,6 +3,7 @@
 #   Grafana          → http://localhost:3000 (NodePort 30300)
 #   Prometheus       → http://localhost:9090 (NodePort 30900)
 #   Jaeger           → http://localhost:16686 (NodePort 30686)
+#   Alertmanager     → http://localhost:9093 (NodePort 30093)
 # Kind solo publica puertos al crear el clúster: si cambian, hay que recrearlo.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -24,5 +25,9 @@ nodes:
         protocol: TCP
       - containerPort: 30686
         hostPort: 16686
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 30093
+        hostPort: 9093
         listenAddress: "127.0.0.1"
         protocol: TCP

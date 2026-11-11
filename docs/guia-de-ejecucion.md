@@ -415,6 +415,7 @@ make demo-up      # clúster + app + Prometheus + Grafana + smoke test (≈ 3 mi
 | Grafana | http://localhost:3000 (abre directo el dashboard; usuario admin: `admin` / `opendays`) |
 | Prometheus | http://localhost:9090/targets (debe mostrar los 2 pods de la API en `UP`) |
 | Jaeger | http://localhost:16686 (ver Pasos 8B y 8C) |
+| Alertmanager | http://localhost:9093 (ver Paso 9) |
 
 Apagar todo: `make demo-down`.
 
@@ -680,6 +681,117 @@ make k8s-deploy TAG=sha-local
 
 ---
 
-## Siguiente: Paso 9 — SRE
+## Paso 9 — SRE: SLO, alertas, fallo controlado y runbook
 
-Pendiente. SLO de disponibilidad, presupuesto de error, alerta, fallo controlado (`make demo-failure`) y runbook.
+**Idea:** tener dashboards no basta. SRE define **qué tan confiable debe ser** el servicio, **avisa** cuando eso está en riesgo y da un **procedimiento** para arreglarlo.
+
+### SLI, SLO y presupuesto de error
+
+| SLI (lo que se mide) | SLO (la meta) |
+|---|---|
+| Disponibilidad: % de solicitudes de usuarios sin error 5xx | **99 %** |
+| Latencia: % de solicitudes en menos de 500 ms | **95 %** |
+
+- **Presupuesto de error:** con 99 %, se puede fallar el 1 %. Mientras quede presupuesto, se lanzan cambios; si se agota, se prioriza la estabilidad.
+- **Velocidad de consumo:** 1 = se gasta al ritmo permitido; 10 = diez veces más rápido.
+
+En producción el SLO se mide en 30 días y las alertas usan ventanas de 1 h y 6 h. **Para la demo** se usan ventanas de 1 y 5 minutos, y el presupuesto se calcula sobre la última hora.
+
+### Archivos
+
+| Archivo | Qué es |
+|---|---|
+| `observability/prometheus/rules.yml` | Reglas que calculan SLI, consumo y presupuesto; alertas `AltaTasaDeErrores` y `LatenciaAlta` |
+| `observability/prometheus/rules_test.yml` | Pruebas unitarias de las alertas (`promtool test rules`) |
+| `observability/alertmanager/` | Alertmanager: agrupa alertas y suprime `LatenciaAlta` si ya hay `AltaTasaDeErrores` |
+| `observability/grafana/generate_dashboard.py` | Genera el dashboard; ahora con la fila **SLO** |
+| `app/stage-2/market-data/market_data.py` | Variable `FAILURE_RATE` para simular un mal cambio de configuración |
+| `docs/runbooks/alta-tasa-de-errores.md` | Runbook de la alerta principal |
+| `docs/runbooks/latencia-alta.md` | Runbook de latencia |
+| `docs/runbooks/retrospectiva-plantilla.md` | Plantilla de retrospectiva sin culpa, con el ejemplo del ensayo |
+
+### Alertas
+
+| Alerta | Se dispara cuando | Severidad |
+|---|---|---|
+| `AltaTasaDeErrores` | El presupuesto se consume más de 5 veces más rápido de lo permitido (más del 5 % de errores), en las ventanas de 5 min y 1 min, durante 1 min | `page`: despertar a la guardia |
+| `LatenciaAlta` | Menos del 95 % responde en menos de 500 ms durante 2 min | `ticket`: atender en horario laboral |
+
+Cada alerta incluye un enlace a su runbook.
+
+### URLs
+
+| | |
+|---|---|
+| Grafana, fila **SLO** | http://localhost:3000 |
+| Alertas en Prometheus | http://localhost:9090/alerts |
+| Alertmanager | http://localhost:9093 |
+
+### Comandos
+
+| Comando | Qué hace |
+|---|---|
+| `make demo-failure` | `market-data` falla el 50 % de las veces (cambio de configuración `FAILURE_RATE=0.5`) |
+| `make demo-recover` | Rollback de `market-data` a la revisión anterior |
+| `make alerts` | Lista las alertas activas |
+
+### Guion de la demo (≈ 5 min)
+
+Pantalla: Grafana (fila SLO) y una terminal.
+
+```bash
+make k8s-traffic &         # tráfico; todo en verde, presupuesto al 100 %
+make demo-failure          # "alguien cambió una configuración"
+```
+
+1. En Grafana, **Disponibilidad vs SLO** cae debajo de 99 % y la **velocidad de consumo** sube.
+2. A los ≈ 2 minutos: **Alertas activas = 1**. Mostrar http://localhost:9093.
+3. Abrir el runbook (`docs/runbooks/alta-tasa-de-errores.md`) y seguirlo:
+   - Grafana → **Respuestas por código HTTP**: los 503 son de `/api/market/quotes`.
+   - Jaeger → Service `market-data`, Tags `error=true`: el error viene de market-data.
+   - `kubectl -n finance rollout history deployment/market-data`: la última revisión es `Config: FAILURE_RATE=0.5`.
+4. Mitigar:
+
+```bash
+make demo-recover
+```
+
+5. En ≈ 1 minuto, los errores bajan a 0 y la alerta se resuelve.
+6. Cerrar con la retrospectiva: mostrar el ejemplo de `docs/runbooks/retrospectiva-plantilla.md`.
+
+### Resultado del ensayo
+
+```
+[  0s] Tráfico iniciado (línea base)
+[ 90s] disponibilidad 100 %  consumo 0  presupuesto 100 %
+[ 90s] make demo-failure
+[215s] 🔥 AltaTasaDeErrores FIRING  (120 s después del fallo)
+[225s] disponibilidad 91.3 %  consumo 5m 8.7  consumo 1m 13.0  presupuesto 0 %
+       errores: /api/market/quotes 503
+       rollout history: 3  Config: FAILURE_RATE=0.5
+[226s] make demo-recover
+[289s] ✅ Alerta resuelta  (56 s después del rollback)
+```
+
+**Detección: 2 min · Mitigación: 18 s después de la alerta · Recuperación: 1 min.**
+
+Durante todo el incidente, suscripciones y dashboard siguieron respondiendo (231 suscripciones creadas). Solo falló la tabla de cotizaciones, que mostró los datos de ejemplo.
+
+El presupuesto de la última hora llega a 0 % muy rápido porque el clúster recién creado tiene pocos minutos de historia: unos minutos de errores pesan mucho. Con horas de tráfico previo, el mismo incidente consumiría solo una parte.
+
+### Pruebas de las alertas
+
+```bash
+docker run --rm -v "$PWD/observability/prometheus:/cfg:ro" -w /cfg --entrypoint promtool \
+  prom/prometheus:v3.1.0 test rules rules_test.yml
+```
+
+Comprueban que: sin errores no hay alerta; con 20 % de errores sí; y los errores de `/health` (probes) no cuentan. El CI las ejecuta en cada PR.
+
+**Mensaje para la charla:** la página no se cayó; falló una parte y el resto siguió funcionando. Prometheus avisó antes que cualquier usuario, el runbook dijo qué revisar y un rollback lo arregló en segundos. Lo que se gastó fue presupuesto de error, y eso decide si mañana se lanzan cambios o se invierte en estabilidad.
+
+---
+
+## Siguiente: Paso 10 — Operaciones asistidas por IA
+
+Pendiente. Entregar a un asistente las métricas, alertas y trazas del incidente, pedirle un resumen y posibles causas sin permiso para desplegar, y evaluar su respuesta contra la causa real.

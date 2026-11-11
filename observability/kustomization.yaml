@@ -13,6 +13,7 @@ resources:
   - prometheus/deployment.yaml
   - grafana/deployment.yaml
   - jaeger/deployment.yaml
+  - alertmanager/deployment.yaml
 
 generatorOptions:
   disableNameSuffixHash: false
@@ -22,6 +23,7 @@ configMapGenerator:
     namespace: monitoring
     files:
       - prometheus/prometheus.yml
+      - prometheus/rules.yml
   - name: grafana-datasources
     namespace: monitoring
     files:
@@ -34,3 +36,7 @@ configMapGenerator:
     namespace: monitoring
     files:
       - grafana/dashboards/finance-platform.json
+  - name: alertmanager-config
+    namespace: monitoring
+    files:
+      - alertmanager/alertmanager.yml

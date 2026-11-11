@@ -13,12 +13,15 @@ import random
 import time
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from opentelemetry import trace
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
 SLOW_RESPONSE_RATE = float(os.environ.get("SLOW_RESPONSE_RATE", "0.05"))
+# Para la demo de SRE: proporción de solicitudes que fallan a propósito
+# (simula un mal cambio de configuración). 0 = sin fallas.
+FAILURE_RATE = float(os.environ.get("FAILURE_RATE", "0"))
 
 INSTRUMENTS = [
     {"symbol": "NOVA", "name": "Nova Systems", "base": 142.18, "kind": "price", "volatility": 0.018},
@@ -124,6 +127,9 @@ async def quotes():
         span.set_attribute("market_data.provider", "simulado")
         span.set_attribute("market_data.slow_response", slow)
         await asyncio.sleep(delay)
+        if random.random() < FAILURE_RATE:
+            span.set_attribute("market_data.injected_failure", True)
+            raise HTTPException(status_code=500, detail="El proveedor de datos no respondió")
 
     now = time.time()
     return {
