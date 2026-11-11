@@ -18,7 +18,7 @@ image_exists() {
   local repository="${OWNER}/finance-platform-$1"
   local token
   token=$(curl -fsS "https://ghcr.io/token?scope=repository:${repository}:pull" | sed -E 's/.*"token":"([^"]+)".*/\1/')
-  curl -fsS -o /dev/null \
+  curl -fs -o /dev/null \
     -H "Authorization: Bearer ${token}" \
     -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json" \
     "https://ghcr.io/v2/${repository}/manifests/${TAG}"

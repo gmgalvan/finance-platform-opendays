@@ -289,6 +289,98 @@ make kind-down      # borra el clúster y sus datos
 
 ---
 
-## Siguiente: Paso 7 — Del PR a Kubernetes con Rolling Update
+## Paso 7 — Del PR a Kubernetes con Rolling Update (demo central)
 
-Pendiente. Hacer un cambio visible, pasar por PR y CI, publicar la imagen nueva y actualizar `newTag` en `kustomization.yaml` para ver el Rolling Update en vivo.
+**Idea:** un cambio recorre todo el camino: código → PR → CI → imagen versionada → Kubernetes, sin que la app deje de responder.
+
+GitHub no puede entrar a Kind porque vive en la laptop. Por eso el CI **publica** la imagen y el último paso, **desplegar**, se ejecuta localmente con `make k8s-release`.
+
+### Comandos
+
+| Comando | Qué hace |
+|---|---|
+| `make k8s-release` | Toma el último commit de `main`, espera su imagen en GHCR y hace Rolling Update de API y frontend |
+| `make k8s-release TAG=sha-<commit>` | Despliega una versión específica |
+| `make k8s-watch` | Muestra los pods en vivo (dejar abierto en una terminal) |
+| `make k8s-ping` | Consulta `/api/health` cada medio segundo (para demostrar que no hay caída) |
+| `make k8s-history` | Historial de versiones desplegadas |
+| `make k8s-rollback` | Regresa a la versión anterior |
+
+### Preparar la pantalla
+
+Tres terminales y el navegador:
+
+1. **Terminal 1:** `make k8s-watch`
+2. **Terminal 2:** `make k8s-ping`
+3. **Terminal 3:** comandos de Git y `make k8s-release`
+4. **Navegador:** http://localhost:8090
+
+### Guion
+
+```bash
+# 1. Rama y cambio visible
+git checkout main && git pull
+git checkout -b demo/cambio-visible
+# ... editar app/stage-2/frontend/index.html (o pedirlo a Claude Code) ...
+
+# 2. Pull Request y CI
+git add -A && git commit -m "Cambio visible en el dashboard"
+git push -u origin demo/cambio-visible
+gh pr create --fill
+gh pr checks --watch           # ≈ 1 min
+
+# 3. Merge: el CI corre en main y publica la imagen sha-<commit>
+gh pr merge --squash --delete-branch
+git checkout main && git pull
+
+# 4. Desplegar en Kubernetes
+make k8s-release               # espera la imagen (≈ 1-2 min tras el merge) y despliega
+```
+
+Recargar el navegador: aparece el cambio.
+
+### Resultado esperado
+
+`make k8s-release` muestra la versión anterior y la nueva:
+
+```
+Versión a desplegar: sha-123a90d
+Esperando la imagen finance-platform-api:sha-123a90d en GHCR....... ✓
+Esperando la imagen finance-platform-frontend:sha-123a90d en GHCR ✓
+...
+Waiting for deployment "api" rollout to finish: 1 out of 2 new replicas have been updated...
+deployment "api" successfully rolled out
+deployment "frontend" successfully rolled out
+
+✓ sha-123a90d desplegada
+```
+
+- **Terminal 1:** se crea un pod nuevo, pasa a `Running` y solo entonces se elimina uno viejo, uno por uno (`maxSurge: 1`, `maxUnavailable: 0`).
+- **Terminal 2:** todas las respuestas siguen en `HTTP 200`.
+
+Ensayo real (PR #6, aviso "🚀 Nueva versión desplegada con CI/CD"): **149 de 149 solicitudes con HTTP 200** durante el despliegue.
+
+### Si algo sale mal: rollback
+
+```bash
+make k8s-history     # ver revisiones
+make k8s-rollback    # volver a la anterior
+```
+
+### Nota sobre la versión en Git
+
+`make k8s-release` cambia la imagen directamente en el clúster; `deploy/kubernetes/kustomization.yaml` conserva la versión base. Para reaplicar los manifiestos sin regresar de versión:
+
+```bash
+make k8s-deploy TAG=sha-<commit>
+```
+
+En un equipo real, esta diferencia se resuelve con GitOps (Argo CD o Flux): el clúster lee la versión desde Git y se sincroniza solo.
+
+**Mensaje para la charla:** este código se escribió hace unos minutos, pasó 7 revisiones automáticas, se empaquetó con su número de versión y Kubernetes lo desplegó sin que la página se cayera ni un segundo.
+
+---
+
+## Siguiente: Paso 8 — Observabilidad con Prometheus y Grafana
+
+Pendiente. Recolectar las métricas de `/api/metrics`, mostrar un dashboard en Grafana y observar el tráfico durante un Rolling Update.
