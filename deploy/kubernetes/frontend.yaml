@@ -42,6 +42,14 @@ spec:
           ports:
             - name: http
               containerPort: 80
+          # Trazas de Nginx y del navegador hacia Jaeger (namespace monitoring).
+          env:
+            - name: OTEL_TRACE
+              value: "on"
+            - name: OTEL_EXPORTER_ENDPOINT
+              value: jaeger.monitoring.svc.cluster.local:4317
+            - name: OTLP_HTTP_COLLECTOR
+              value: http://jaeger.monitoring.svc.cluster.local:4318
           readinessProbe:
             httpGet:
               path: /health/frontend

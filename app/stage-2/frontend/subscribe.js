@@ -109,7 +109,7 @@ form.addEventListener("submit", async (event) => {
   submitButton.textContent = "Creando cuenta…";
 
   try {
-    const response = await fetch("/api/subscriptions", {
+    const response = await window.tracedFetch("Suscribirse", "/api/subscriptions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

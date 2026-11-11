@@ -254,6 +254,14 @@ La imagen recibe `APP_VERSION=sha-<commit>` en el CI; aparece en `/api/health` y
 
 Ensayo: en `POST /api/subscriptions` (≈ 100 ms), `hash_password` ocupa ≈ 82 ms y cada consulta SQL ≈ 1 ms.
 
+### Stage 8C — Traza completa desde el navegador: terminado
+
+- `tracing.js` (sin librerías) crea la traza en el navegador, envía `traceparent` y exporta su span por OTLP/JSON a `/v1/traces`.
+- Nginx usa `nginx:1.27-alpine-otel`: continúa la traza, crea su span, reenvía `/v1/traces` a Jaeger y registra `trace_id` en el access log.
+- Configuración de Nginx como plantilla: tracing apagado por defecto (Compose, CI, EC2) y encendido en Kubernetes.
+
+Ensayo: `Suscribirse` 131 ms en el navegador → Nginx 106 ms → API 105 ms → `hash_password` 85 ms + 4 consultas SQL ≈ 1-2 ms.
+
 Loki (logs) queda fuera de la demo.
 
 ## Decisiones importantes

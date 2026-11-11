@@ -36,7 +36,7 @@ if (savedUser) {
     element.textContent = user.name.split(" ")[0];
   });
 
-  fetch(`/api/dashboard?email=${encodeURIComponent(user.email)}`)
+  window.tracedFetch("Cargar dashboard", `/api/dashboard?email=${encodeURIComponent(user.email)}`)
     .then((response) => (response.ok ? response.json() : Promise.reject(new Error("API no disponible"))))
     .then((result) => {
       sessionStorage.setItem("finance-demo-user", JSON.stringify(result.user));
