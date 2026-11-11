@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            tests/requirements.txt
+            app/stage-2/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pip install -r tests/requirements.txt
+      - name: Enlaces, recursos y sintaxis JavaScript
+        run: pytest tests/frontend -v
+
+  api:
+    name: API + PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: finance_platform
+          POSTGRES_USER: finance
+          POSTGRES_PASSWORD: finance_demo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U finance -d finance_platform"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://finance:finance_demo@localhost:5432/finance_platform
+      REQUIRE_DATABASE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            tests/requirements.txt
+            app/stage-2/api/requirements.txt
+      - run: pip install -r tests/requirements.txt
+      - name: Pruebas unitarias y de integración
+        run: pytest tests/api -v
+
+  infrastructure:
+    name: Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Formato
+        run: terraform fmt -check -recursive infra/terraform
+      - name: Validación
+        run: |
+          terraform -chdir=infra/terraform/aws-ec2 init -backend=false -input=false
+          terraform -chdir=infra/terraform/aws-ec2 validate
+      - name: Políticas de seguridad
+        run: |
+          pip install pytest
+          pytest tests/infrastructure -v
+
+  security:
+    name: Seguridad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Buscar secretos en el historial (gitleaks)
+        env:
+          GITLEAKS_VERSION: 8.21.2
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks git . --redact --verbose
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Vulnerabilidades en dependencias de Python (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r app/stage-2/api/requirements.txt
+      - name: Revisión de dependencias nuevas del PR
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  docker:
+    name: Docker + smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir imágenes
+        run: docker compose -f deploy/compose/stage-2/compose.yaml build
+      - name: Levantar las tres capas
+        run: docker compose -f deploy/compose/stage-2/compose.yaml up --detach --wait --wait-timeout 120
+      - name: Smoke test
+        run: tests/smoke/smoke.sh http://localhost:8082
+      - name: Logs si algo falla
+        if: failure()
+        run: docker compose -f deploy/compose/stage-2/compose.yaml logs
+      - name: Apagar
+        if: always()
+        run: docker compose -f deploy/compose/stage-2/compose.yaml down --volumes
+
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs: [frontend, api, infrastructure, security, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar que todos los jobs pasaron
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Resultados: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "Al menos un job no pasó"
+              exit 1
+            fi
+          done
