@@ -5,7 +5,7 @@ set -euo pipefail
 
 OWNER="gmgalvan"
 NAMESPACE="finance"
-COMPONENTS=(api frontend)
+COMPONENTS=(api frontend market-data)
 
 if [[ $# -ge 1 ]]; then
   TAG="$1"

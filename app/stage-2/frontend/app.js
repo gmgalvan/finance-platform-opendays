@@ -94,3 +94,45 @@ document.querySelectorAll("dialog").forEach((dialog) => {
     }
   });
 });
+
+// Cotizaciones del servicio market-data (a través de la API).
+// Si no responde, la tabla conserva los datos de ejemplo.
+const quotesStatus = document.querySelector("[data-quotes-status]");
+const numberFormat = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 });
+
+function formatQuoteValue(quote) {
+  if (quote.kind === "rate") return `${quote.value.toFixed(2)}%`;
+  if (quote.kind === "index") return numberFormat.format(quote.value);
+  return `$${quote.value.toFixed(2)}`;
+}
+
+function renderQuote(quote) {
+  const row = document.querySelector(`[data-quote="${quote.symbol}"]`);
+  if (!row) return;
+  const change = quote.change_percent;
+  const sign = change > 0 ? "+" : change < 0 ? "−" : "";
+  const changeCell = row.querySelector("[data-quote-change]");
+  row.querySelector("[data-quote-value]").textContent = formatQuoteValue(quote);
+  changeCell.textContent = `${sign}${Math.abs(change).toFixed(2)}%`;
+  changeCell.className = change > 0 ? "positive" : change < 0 ? "negative" : "neutral";
+}
+
+async function loadQuotes() {
+  try {
+    const response = await window.tracedFetch("Cargar cotizaciones", "/api/market/quotes");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    result.quotes.forEach(renderQuote);
+    const time = new Date(result.as_of).toLocaleTimeString("es-MX");
+    quotesStatus.textContent = `En vivo · market-data · ${time}`;
+    quotesStatus.classList.add("live");
+  } catch (error) {
+    quotesStatus.textContent = "Cotizaciones no disponibles · datos de ejemplo";
+    quotesStatus.classList.remove("live");
+  }
+}
+
+if (quotesStatus && window.tracedFetch) {
+  loadQuotes();
+  setInterval(loadQuotes, 15000);
+}

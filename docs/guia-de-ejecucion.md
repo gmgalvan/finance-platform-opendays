@@ -618,6 +618,68 @@ Copiar ese `trace_id` en el buscador de Jaeger (arriba a la izquierda) abre la t
 
 ---
 
+## Paso 8D — Un servicio nuevo: market-data
+
+**Idea:** agregar un segundo servicio de backend y ver en Jaeger cómo una solicitud cruza **4 servicios**.
+
+**¿Por qué un servicio aparte?** Los datos de mercado vienen de otra fuente, cambian a otro ritmo y tienen otra carga que las cuentas y suscripciones. Es una razón clara para separarlo; no se separa "por moda" (diapositiva 4).
+
+### Qué cambió
+
+| Archivo | Cambio |
+|---|---|
+| `app/stage-2/market-data/market_data.py` | Servicio FastAPI: `GET /quotes` con cotizaciones simuladas de NOVA, VERD, MX50 y BONO10; latencia de 15-60 ms y, en el 5 % de los casos, 250-400 ms |
+| `app/stage-2/api/main.py` | `GET /api/market/quotes` llama a market-data con httpx (la traza se propaga sola). Si market-data falla, responde 503 |
+| `app/stage-2/frontend/app.js` | La tabla "Mi lista" se actualiza cada 15 s con datos en vivo; si falla, conserva los datos de ejemplo |
+| `deploy/docker/stage-2/market-data.Dockerfile` | Imagen del servicio |
+| `deploy/compose/stage-2/compose.yaml` | Servicio `market-data` en Docker Compose |
+| `deploy/kubernetes/market-data.yaml` | Deployment (2 réplicas) y Service; Prometheus lo descubre por anotaciones |
+| `.github/workflows/pull-request.yml` | Pruebas, pip-audit y publicación de la tercera imagen |
+| `tests/market_data/`, `tests/api/test_market_quotes.py` | Pruebas del servicio y de la API como intermediaria |
+
+### Ver la traza de 4 servicios
+
+1. Abrir http://localhost:8090. Abajo de "Mi lista" aparece **● En vivo · market-data · hh:mm:ss**.
+2. En Jaeger: **Service:** `finance-web` → **Operation:** `Cargar cotizaciones` → **Find Traces**.
+
+**Resultado del ensayo:**
+
+```
+[finance-web]   Cargar cotizaciones          53.2 ms
+  [finance-nginx] GET /api/market/quotes     52.0 ms
+    [finance-api] GET /api/market/quotes     50.9 ms
+      [finance-api] GET (httpx)              42.8 ms
+        [market-data] GET /quotes            41.5 ms
+          [market-data] consultar_proveedor  40.4 ms   ← el proveedor externo
+```
+
+**System Architecture** en Jaeger:
+
+```
+finance-web → finance-nginx → finance-api → market-data
+```
+
+Buscar trazas lentas: en Jaeger, **Min Duration** = `200ms`. Aparecen las respuestas lentas del proveedor (atributo `market_data.slow_response = true`).
+
+### Desplegar las 3 imágenes
+
+`make k8s-release` ahora actualiza `api`, `frontend` y `market-data` a la misma versión.
+
+### Probar imágenes locales en Kind
+
+```bash
+for c in api frontend market-data; do
+  docker build -f deploy/docker/stage-2/$c.Dockerfile --build-arg APP_VERSION=sha-local \
+    -t ghcr.io/gmgalvan/finance-platform-$c:sha-local .
+  kind load docker-image ghcr.io/gmgalvan/finance-platform-$c:sha-local --name finance
+done
+make k8s-deploy TAG=sha-local
+```
+
+**Mensaje para la charla:** con una sola traza se ve que los 50 ms de la tabla de cotizaciones son, casi completos, la espera al proveedor externo. Ni la API ni Nginx son el problema.
+
+---
+
 ## Siguiente: Paso 9 — SRE
 
 Pendiente. SLO de disponibilidad, presupuesto de error, alerta, fallo controlado (`make demo-failure`) y runbook.

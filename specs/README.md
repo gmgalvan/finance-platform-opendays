@@ -262,6 +262,15 @@ Ensayo: en `POST /api/subscriptions` (≈ 100 ms), `hash_password` ocupa ≈ 82 
 
 Ensayo: `Suscribirse` 131 ms en el navegador → Nginx 106 ms → API 105 ms → `hash_password` 85 ms + 4 consultas SQL ≈ 1-2 ms.
 
+### Stage 8D — Servicio market-data: terminado
+
+- Nuevo servicio `market-data` (FastAPI): cotizaciones simuladas con latencia variable y respuestas lentas ocasionales.
+- La API expone `GET /api/market/quotes` y llama a market-data con httpx instrumentado; si falla, responde 503.
+- El dashboard actualiza "Mi lista" cada 15 s.
+- Docker Compose, Kubernetes (2 réplicas), CI (pruebas, pip-audit y tercera imagen en GHCR) y `make k8s-release` incluyen market-data.
+
+Ensayo: traza `Cargar cotizaciones` con 4 servicios (`finance-web → finance-nginx → finance-api → market-data`); 40 de 53 ms son la consulta simulada al proveedor.
+
 Loki (logs) queda fuera de la demo.
 
 ## Decisiones importantes
