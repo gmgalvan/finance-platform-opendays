@@ -1,5 +1,8 @@
 # Clúster local de Kubernetes para la demo.
-# El NodePort 30080 del frontend queda disponible en http://localhost:8090
+#   Finance Platform → http://localhost:8090 (NodePort 30080)
+#   Grafana          → http://localhost:3000 (NodePort 30300)
+#   Prometheus       → http://localhost:9090 (NodePort 30900)
+# Kind solo publica puertos al crear el clúster: si cambian, hay que recrearlo.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: finance
@@ -8,5 +11,13 @@ nodes:
     extraPortMappings:
       - containerPort: 30080
         hostPort: 8090
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 30300
+        hostPort: 3000
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 30900
+        hostPort: 9090
         listenAddress: "127.0.0.1"
         protocol: TCP

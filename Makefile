@@ -1,4 +1,4 @@
-.PHONY: kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke k8s-release k8s-rollback k8s-history k8s-watch k8s-ping test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
+.PHONY: demo-up demo-down obs-deploy obs-status k8s-traffic kind-up kind-down k8s-render k8s-deploy k8s-status k8s-smoke k8s-release k8s-rollback k8s-history k8s-watch k8s-ping test-setup test test-infra test-db-up test-db-down smoke serve-static serve-stage-2 stage-2-up stage-2-down stage-2-logs docker-build-static docker-run-static package-stage-3 terraform-stage-3-init terraform-stage-3-plan terraform-stage-3-apply terraform-stage-3-output terraform-stage-3-destroy
 
 PYTHON ?= .venv/bin/python
 TEST_DB_URL ?= postgresql://finance:finance_demo@localhost:55432/finance_platform
@@ -81,6 +81,31 @@ k8s-ping:
 		curl -s -o /dev/null -w 'HTTP %{http_code}  %{time_total}s\n' --max-time 2 http://localhost:8090/api/health || echo 'sin respuesta'; \
 		sleep 0.5; \
 	done
+
+k8s-traffic:
+	deploy/kind/traffic.sh http://localhost:8090
+
+# --- Stage 8: observabilidad -------------------------------------------------
+
+obs-deploy:
+	kubectl apply -k observability
+	kubectl -n monitoring rollout status deployment/prometheus --timeout=180s
+	kubectl -n monitoring rollout status deployment/grafana --timeout=180s
+	@echo "Grafana:    http://localhost:3000  (anónimo de solo lectura; admin / opendays)"
+	@echo "Prometheus: http://localhost:9090/targets"
+
+obs-status:
+	kubectl -n monitoring get pods,services
+
+# --- Todo junto, para el día de la charla ------------------------------------
+
+demo-up: kind-up k8s-deploy obs-deploy k8s-smoke
+	@echo
+	@echo "App:        http://localhost:8090"
+	@echo "Grafana:    http://localhost:3000"
+	@echo "Prometheus: http://localhost:9090"
+
+demo-down: kind-down
 
 # --- Stages 1-3 --------------------------------------------------------------
 
