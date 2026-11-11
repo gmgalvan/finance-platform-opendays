@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Finance Platform, prototipo de una plataforma moderna de información financiera por suscripción.">
+    <title>Finance Platform — Tu panorama financiero</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Ir al contenido</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#inicio" aria-label="Finance Platform, inicio">
+          <span class="brand-symbol" aria-hidden="true">F</span>
+          <span>
+            <strong>Finance</strong>
+            <small>PLATFORM</small>
+          </span>
+        </a>
+
+        <nav aria-label="Navegación principal">
+          <a class="active" href="#inicio">Resumen</a>
+          <a href="#mercados">Mercados</a>
+          <a href="#noticias">Noticias</a>
+          <a href="#suscripcion">Suscripción</a>
+        </nav>
+
+        <button class="account-button" type="button" data-open-dialog="account-dialog">
+          <span class="avatar" aria-hidden="true">AD</span>
+          <span class="account-copy"><small>Cuenta demo</small><strong data-user-full-name>Ana Díaz</strong></span>
+        </button>
+      </div>
+    </header>
+
+    <div class="demo-banner" role="note">
+      <strong>Entorno de demostración</strong>
+      <span>Los saldos, rendimientos y noticias de esta página son datos ficticios.</span>
+    </div>
+
+    <main id="contenido">
+      <section class="welcome" id="inicio" aria-labelledby="welcome-title">
+        <div>
+          <p class="eyebrow">Viernes, 30 de octubre</p>
+          <h1 id="welcome-title">Buenos días, <span data-user-first-name>Ana</span>.</h1>
+          <p class="welcome-copy">Tu panorama financiero, explicado con claridad.</p>
+        </div>
+        <button class="outline-button" type="button" data-open-dialog="architecture-dialog">
+          Ver cómo funciona
+          <span aria-hidden="true">→</span>
+        </button>
+      </section>
+
+      <section class="summary-grid" aria-label="Resumen de la cuenta">
+        <article class="balance-card dark-card">
+          <div class="card-heading">
+            <p>Valor del portafolio</p>
+            <span class="status-dot">Actualizado</span>
+          </div>
+          <p class="balance">$184,250.40</p>
+          <p class="gain"><span aria-hidden="true">↗</span> $4,318.20 (2.40%) este mes</p>
+          <div class="allocation" aria-label="Distribución: 58% acciones, 27% bonos y 15% efectivo">
+            <span class="stocks" style="--size: 58%"></span>
+            <span class="bonds" style="--size: 27%"></span>
+            <span class="cash" style="--size: 15%"></span>
+          </div>
+          <ul class="legend" aria-hidden="true">
+            <li><i class="stocks"></i>Acciones 58%</li>
+            <li><i class="bonds"></i>Bonos 27%</li>
+            <li><i class="cash"></i>Efectivo 15%</li>
+          </ul>
+        </article>
+
+        <article class="insight-card">
+          <div class="insight-icon" aria-hidden="true">◎</div>
+          <p class="eyebrow">Insight de la semana</p>
+          <h2>Tu portafolio está más diversificado que el mes pasado.</h2>
+          <p>La exposición a una sola categoría disminuyó cinco puntos porcentuales.</p>
+          <a href="#portafolio">Revisar distribución</a>
+        </article>
+
+        <article class="goal-card">
+          <div class="card-heading">
+            <p>Meta de ahorro</p>
+            <span>74%</span>
+          </div>
+          <h2>Fondo de emergencia</h2>
+          <p><strong>$44,400</strong> de $60,000</p>
+          <div class="progress" role="progressbar" aria-label="Progreso del fondo de emergencia" aria-valuemin="0" aria-valuemax="100" aria-valuenow="74">
+            <span></span>
+          </div>
+          <small>Faltan $15,600 para alcanzar la meta.</small>
+        </article>
+      </section>
+
+      <section class="dashboard-grid" id="portafolio">
+        <article class="panel performance-panel" aria-labelledby="performance-title">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Portafolio</p>
+              <h2 id="performance-title">Rendimiento</h2>
+            </div>
+            <div class="period-selector" role="group" aria-label="Periodo del gráfico">
+              <button type="button" data-period="1S">1S</button>
+              <button type="button" data-period="1M" class="selected">1M</button>
+              <button type="button" data-period="3M">3M</button>
+              <button type="button" data-period="1A">1A</button>
+            </div>
+          </div>
+
+          <div class="chart-summary" aria-live="polite">
+            <strong id="chart-value">+$4,318.20</strong>
+            <span id="chart-change">+2.40% durante el último mes</span>
+          </div>
+
+          <div class="chart" aria-label="Gráfico ilustrativo del rendimiento del portafolio">
+            <svg viewBox="0 0 700 230" role="img" aria-labelledby="chart-title chart-description">
+              <title id="chart-title">Rendimiento del portafolio</title>
+              <desc id="chart-description">Línea ascendente con variaciones durante el periodo seleccionado.</desc>
+              <g class="grid-lines" aria-hidden="true">
+                <line x1="20" y1="25" x2="680" y2="25"></line>
+                <line x1="20" y1="85" x2="680" y2="85"></line>
+                <line x1="20" y1="145" x2="680" y2="145"></line>
+                <line x1="20" y1="205" x2="680" y2="205"></line>
+              </g>
+              <path id="chart-area" class="chart-area" d="M20 180 C80 165,115 188,170 152 S265 132,320 145 S405 105,455 118 S545 75,595 92 S650 55,680 42 L680 205 L20 205 Z"></path>
+              <path id="chart-line" class="chart-line" d="M20 180 C80 165,115 188,170 152 S265 132,320 145 S405 105,455 118 S545 75,595 92 S650 55,680 42"></path>
+              <circle id="chart-point" class="chart-point" cx="680" cy="42" r="5"></circle>
+            </svg>
+          </div>
+        </article>
+
+        <aside class="panel watchlist-panel" id="mercados" aria-labelledby="watchlist-title">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Mercados</p>
+              <h2 id="watchlist-title">Mi lista</h2>
+            </div>
+            <button class="icon-button" type="button" aria-label="Agregar instrumento" title="Agregar instrumento">+</button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Instrumento</th>
+                <th scope="col">Precio</th>
+                <th scope="col">Hoy</th>
+                <th scope="col"><span class="sr-only">Favorito</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><strong>NOVA</strong><small>Nova Systems</small></th>
+                <td>$142.18</td>
+                <td class="positive">+1.82%</td>
+                <td><button class="star active" type="button" aria-label="Quitar NOVA de favoritos" aria-pressed="true">★</button></td>
+              </tr>
+              <tr>
+                <th scope="row"><strong>VERD</strong><small>Verde Energía</small></th>
+                <td>$86.42</td>
+                <td class="negative">−0.34%</td>
+                <td><button class="star active" type="button" aria-label="Quitar VERD de favoritos" aria-pressed="true">★</button></td>
+              </tr>
+              <tr>
+                <th scope="row"><strong>MX50</strong><small>Índice México 50</small></th>
+                <td>53,104</td>
+                <td class="positive">+0.68%</td>
+                <td><button class="star" type="button" aria-label="Agregar MX50 a favoritos" aria-pressed="false">☆</button></td>
+              </tr>
+              <tr>
+                <th scope="row"><strong>BONO10</strong><small>Bono 10 años</small></th>
+                <td>9.31%</td>
+                <td class="neutral">0.00%</td>
+                <td><button class="star" type="button" aria-label="Agregar BONO10 a favoritos" aria-pressed="false">☆</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </aside>
+      </section>
+
+      <section class="news-section" id="noticias" aria-labelledby="news-title">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Selección editorial</p>
+            <h2 id="news-title">Lo que mueve tu dinero</h2>
+          </div>
+          <a href="#noticias">Ver todas las noticias →</a>
+        </div>
+
+        <div class="news-grid">
+          <article class="featured-news">
+            <div class="story-visual market-visual" aria-hidden="true">
+              <span>04</span><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="story-copy">
+              <p class="eyebrow">Mercados · 6 min</p>
+              <h3>Qué significa una reducción de tasas para tus decisiones financieras</h3>
+              <p>Un recorrido claro por el impacto potencial en ahorro, crédito e inversión.</p>
+              <a href="#noticias" aria-label="Leer: Qué significa una reducción de tasas">Leer análisis</a>
+            </div>
+          </article>
+
+          <article class="compact-news">
+            <div class="story-visual bars-visual" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="story-copy">
+              <p class="eyebrow">Aprende · 4 min</p>
+              <h3>La diferencia entre ahorrar e invertir</h3>
+              <a href="#noticias">Leer guía</a>
+            </div>
+          </article>
+
+          <article class="compact-news">
+            <div class="story-visual globe-visual" aria-hidden="true"><span>◎</span></div>
+            <div class="story-copy">
+              <p class="eyebrow">Economía · 5 min</p>
+              <h3>Tres señales para entender el panorama global</h3>
+              <a href="#noticias">Leer resumen</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="membership" id="suscripcion" aria-labelledby="membership-title">
+        <div>
+          <p class="eyebrow">Finance Plus</p>
+          <h2 id="membership-title">Información útil, sin ruido.</h2>
+          <p>Recibe análisis, alertas y herramientas educativas en una sola suscripción.</p>
+        </div>
+        <ul>
+          <li>Resumen diario personalizado</li>
+          <li>Alertas de tu lista de seguimiento</li>
+          <li>Archivo completo de análisis</li>
+        </ul>
+        <div class="membership-action">
+          <p><strong>$149</strong> <span>MXN/mes</span></p>
+          <a class="primary-button" href="subscribe.html">Conocer el plan</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="#inicio"><span class="brand-symbol" aria-hidden="true">F</span><strong>Finance Platform</strong></a>
+      <p>Prototipo educativo · Todos los datos son ficticios.</p>
+      <nav aria-label="Navegación del pie">
+        <a href="#inicio">Privacidad</a>
+        <a href="#inicio">Términos</a>
+        <a href="#inicio">Ayuda</a>
+      </nav>
+    </footer>
+
+    <dialog id="architecture-dialog">
+      <div class="dialog-content">
+        <button class="dialog-close" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">Stage 2</p>
+        <h2>De una página a una plataforma</h2>
+        <div class="architecture-flow" aria-label="Frontend se comunica con API y API con base de datos">
+          <span>Frontend<small>Interfaz</small></span><b aria-hidden="true">→</b>
+          <span>API<small>Reglas</small></span><b aria-hidden="true">→</b>
+          <span>Database<small>Datos</small></span>
+        </div>
+        <p>Esta interfaz es el primer paso. Después conectaremos sus componentes a una API y PostgreSQL para demostrar una arquitectura real de tres capas.</p>
+      </div>
+    </dialog>
+
+    <dialog id="account-dialog">
+      <div class="dialog-content">
+        <button class="dialog-close" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">Cuenta de demostración</p>
+        <h2>Ana Díaz</h2>
+        <p>Plan gratuito · Último acceso: hoy</p>
+        <button class="outline-button full-width" type="button">Administrar cuenta</button>
+      </div>
+    </dialog>
+
+    <dialog id="subscription-dialog">
+      <form method="dialog" class="dialog-content">
+        <button class="dialog-close" type="submit" aria-label="Cerrar">×</button>
+        <p class="eyebrow">Finance Plus</p>
+        <h2>Próximamente</h2>
+        <p>En esta etapa la suscripción todavía es simulada. La conectaremos a la API y a la base de datos en el siguiente paso.</p>
+        <button class="primary-button full-width" type="submit">Entendido</button>
+      </form>
+    </dialog>
+  </body>
+</html>

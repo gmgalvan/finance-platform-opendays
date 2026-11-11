@@ -1,0 +1,615 @@
+.signup-page {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.signup-header {
+  display: flex;
+  width: min(1180px, calc(100% - 2rem));
+  min-height: 82px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.back-link {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--ink);
+}
+
+.signup-layout {
+  display: grid;
+  width: min(1180px, calc(100% - 2rem));
+  min-height: calc(100vh - 180px);
+  margin: 0 auto;
+  padding: 3.5rem 0;
+  grid-template-columns: minmax(280px, 0.76fr) minmax(520px, 1.24fr);
+  gap: clamp(3rem, 8vw, 8rem);
+}
+
+.signup-story {
+  align-self: start;
+}
+
+.signup-story h1 {
+  max-width: 560px;
+  font-size: clamp(3rem, 6vw, 5.5rem);
+}
+
+.story-lead {
+  max-width: 460px;
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+.plan-card {
+  display: flex;
+  max-width: 460px;
+  margin-top: 2rem;
+  padding: 1rem 1.1rem;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--forest);
+  background: var(--cream);
+}
+
+.plan-card p,
+.plan-card strong {
+  margin: 0;
+}
+
+.plan-card p {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.plan-card strong {
+  font-family: Georgia, serif;
+  font-size: 1.7rem;
+}
+
+.plan-card strong small {
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.plan-card > span {
+  padding: 0.3rem 0.55rem;
+  color: var(--forest);
+  background: var(--lime);
+  font-size: 0.66rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.benefits {
+  max-width: 460px;
+  margin: 2rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.benefits li {
+  display: flex;
+  padding: 0.85rem 0;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.83rem;
+  font-weight: 650;
+}
+
+.benefits span {
+  width: 34px;
+  color: var(--forest-2);
+  font-family: Georgia, serif;
+}
+
+.security-note {
+  display: flex;
+  max-width: 460px;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  color: #76513f;
+  background: #fff1e7;
+  font-size: 0.72rem;
+}
+
+.security-note > span {
+  font-size: 1.2rem;
+}
+
+.security-note p {
+  display: grid;
+  margin: 0;
+}
+
+.signup-workspace {
+  align-self: start;
+  padding: clamp(1.4rem, 4vw, 2.6rem);
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.stepper {
+  display: grid;
+  margin: 0 0 3rem;
+  padding: 0;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+}
+
+.stepper li {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+  color: #8a948e;
+  font-size: 0.65rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.stepper li::before {
+  position: absolute;
+  top: 14px;
+  right: 50%;
+  width: 100%;
+  height: 1px;
+  z-index: 0;
+  background: var(--line);
+  content: "";
+}
+
+.stepper li:first-child::before {
+  display: none;
+}
+
+.stepper span {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  margin: 0 auto;
+  z-index: 1;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.stepper li.current,
+.stepper li.complete {
+  color: var(--forest);
+}
+
+.stepper li.current span {
+  color: var(--forest);
+  border-color: var(--lime);
+  background: var(--lime);
+}
+
+.stepper li.complete span {
+  color: white;
+  border-color: var(--forest);
+  background: var(--forest);
+}
+
+.form-step h2,
+.success-state h2 {
+  margin-bottom: 0.5rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.step-intro,
+.success-state > p {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.field-grid {
+  display: grid;
+  gap: 1.1rem;
+  margin-top: 2rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field > span {
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem;
+  border: 1px solid #adb7b0;
+  border-radius: 0;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.field input:focus {
+  border-color: var(--forest);
+  outline: 2px solid var(--lime);
+  outline-offset: 1px;
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--red);
+  background: #fff8f7;
+}
+
+.field small {
+  color: var(--ink-soft);
+  font-size: 0.65rem;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 4rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  transform: translateY(-50%);
+  border: 0;
+  color: var(--forest-2);
+  background: transparent;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  margin-top: 2.2rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.single-action {
+  justify-content: flex-end;
+}
+
+.next-button,
+.submit-button {
+  min-width: 190px;
+  border-color: var(--forest);
+  color: white;
+  background: var(--forest);
+}
+
+.next-button:hover,
+.submit-button:hover {
+  color: var(--forest);
+  border-color: var(--lime);
+  background: var(--lime);
+}
+
+.text-button {
+  padding: 0.5rem 0;
+  border: 0;
+  color: var(--ink-soft);
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.topic-grid {
+  display: grid;
+  margin: 2rem 0 0;
+  padding: 0;
+  border: 0;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.topic-card {
+  position: relative;
+  display: grid;
+  min-height: 160px;
+  padding: 1rem;
+  align-content: end;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.topic-card:has(input:checked) {
+  border: 2px solid var(--forest);
+  background: #f8fbeF;
+}
+
+.topic-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.topic-card:focus-within {
+  outline: 3px solid var(--orange);
+  outline-offset: 2px;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  display: none;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--forest);
+  font-size: 0.7rem;
+}
+
+.topic-card:has(input:checked) .checkmark {
+  display: grid;
+}
+
+.topic-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 1rem;
+  place-items: center;
+  color: white;
+  font-family: Georgia, serif;
+  font-size: 1.4rem;
+}
+
+.market-topic { background: var(--forest-2); }
+.economy-topic { background: var(--blue); }
+.personal-topic { background: var(--orange); }
+.tech-topic { background: #69548f; }
+
+.topic-card strong {
+  font-family: Georgia, serif;
+  font-size: 1rem;
+}
+
+.topic-card small {
+  margin-top: 0.3rem;
+  color: var(--ink-soft);
+  font-size: 0.65rem;
+}
+
+.consent-field {
+  display: flex;
+  margin-top: 1.2rem;
+  gap: 0.6rem;
+  align-items: flex-start;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.consent-field input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--forest);
+}
+
+.form-error {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.7rem;
+  color: var(--red);
+  border-left: 3px solid var(--red);
+  background: #fff5f4;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.review-list {
+  margin: 2rem 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.review-list div {
+  display: grid;
+  padding: 0.85rem 0;
+  grid-template-columns: 120px 1fr;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.76rem;
+}
+
+.review-list dt {
+  color: var(--ink-soft);
+}
+
+.review-list dd {
+  margin: 0;
+  font-weight: 750;
+}
+
+.demo-pill {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.16rem 0.4rem;
+  color: var(--forest);
+  background: var(--lime);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+}
+
+.success-state {
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.success-mark {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 1.3rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--forest);
+  background: var(--lime);
+  font-size: 1.8rem;
+  font-weight: 850;
+}
+
+.request-preview {
+  margin: 2rem 0;
+  padding: 1rem;
+  color: #dce8e2;
+  background: var(--forest);
+  text-align: left;
+}
+
+.request-preview > div {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.request-preview code {
+  color: white;
+}
+
+.request-preview p {
+  margin: 0.7rem 0 0;
+  color: #bfcec7;
+  font-size: 0.68rem;
+}
+
+.method,
+.pending {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.58rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.method {
+  color: var(--forest);
+  background: var(--lime);
+}
+
+.pending {
+  margin-left: auto;
+  color: white;
+  background: var(--orange);
+}
+
+.dashboard-link {
+  border-color: var(--forest);
+  color: white;
+  background: var(--forest);
+}
+
+.dashboard-link:hover {
+  color: var(--forest);
+  border-color: var(--lime);
+  background: var(--lime);
+}
+
+.signup-footer {
+  min-height: 80px;
+  padding-block: 1rem;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .signup-layout {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .signup-story h1 {
+    max-width: 700px;
+  }
+
+  .story-lead,
+  .plan-card,
+  .benefits,
+  .security-note {
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .signup-header {
+    min-height: 70px;
+  }
+
+  .back-link {
+    font-size: 0;
+  }
+
+  .back-link span {
+    font-size: 1.2rem;
+  }
+
+  .signup-layout {
+    width: 100%;
+    padding-top: 2rem;
+  }
+
+  .signup-story {
+    padding: 0 1rem;
+  }
+
+  .signup-workspace {
+    padding: 1.2rem 1rem;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .topic-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topic-card {
+    min-height: 135px;
+  }
+
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .next-button,
+  .submit-button {
+    width: 100%;
+  }
+
+  .review-list div {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .signup-footer {
+    padding-inline: 1rem;
+  }
+}

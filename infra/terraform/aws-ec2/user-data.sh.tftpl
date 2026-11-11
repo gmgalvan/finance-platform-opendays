@@ -1,0 +1,91 @@
+#!/bin/bash
+set -euxo pipefail
+
+exec > >(tee /var/log/finance-platform-bootstrap.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+yum update -y
+yum install -y docker awscli tar gzip
+systemctl enable --now docker
+
+dd if=/dev/zero of=/swapfile bs=1M count=1024
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+
+install -d -m 0755 /opt/finance-platform
+aws s3 cp "s3://${bucket_name}/${artifact_key}" /tmp/finance-platform.tar.gz --region "${aws_region}"
+tar -xzf /tmp/finance-platform.tar.gz -C /opt/finance-platform
+cd /opt/finance-platform
+
+DB_PASSWORD="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+install -m 0600 /dev/null /opt/finance-platform/.env
+printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD" > /opt/finance-platform/.env
+
+docker network create finance-platform || true
+docker volume create finance-postgres-data
+
+docker run --detach \
+  --name db \
+  --network finance-platform \
+  --restart unless-stopped \
+  --env POSTGRES_DB=finance_platform \
+  --env POSTGRES_USER=finance \
+  --env POSTGRES_PASSWORD="$DB_PASSWORD" \
+  --volume finance-postgres-data:/var/lib/postgresql/data \
+  --volume /opt/finance-platform/app/stage-2/database/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro \
+  postgres:17-alpine
+
+for attempt in $(seq 1 30); do
+  if docker exec db pg_isready -U finance -d finance_platform; then
+    break
+  fi
+  if [ "$attempt" -eq 30 ]; then
+    echo "PostgreSQL did not become ready" >&2
+    exit 1
+  fi
+  sleep 2
+done
+
+docker build \
+  --file deploy/docker/stage-2/api.Dockerfile \
+  --tag finance-platform-api:stage-3 .
+
+docker build \
+  --file deploy/docker/stage-2/frontend.Dockerfile \
+  --tag finance-platform-frontend:stage-3 .
+
+docker run --detach \
+  --name api \
+  --network finance-platform \
+  --restart unless-stopped \
+  --env DATABASE_URL="postgresql://finance:$DB_PASSWORD@db:5432/finance_platform" \
+  finance-platform-api:stage-3
+
+for attempt in $(seq 1 30); do
+  if docker exec api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"; then
+    break
+  fi
+  if [ "$attempt" -eq 30 ]; then
+    echo "API did not become ready" >&2
+    exit 1
+  fi
+  sleep 2
+done
+
+docker run --detach \
+  --name frontend \
+  --network finance-platform \
+  --restart unless-stopped \
+  --publish 80:80 \
+  finance-platform-frontend:stage-3
+
+for attempt in $(seq 1 20); do
+  if curl --fail --silent http://127.0.0.1/health/frontend; then
+    touch /opt/finance-platform/BOOTSTRAP_COMPLETE
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "Frontend did not become ready" >&2
+exit 1

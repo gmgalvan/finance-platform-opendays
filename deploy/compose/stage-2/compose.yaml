@@ -1,0 +1,53 @@
+services:
+  frontend:
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/stage-2/frontend.Dockerfile
+    image: finance-platform-frontend:stage-2
+    ports:
+      - "8082:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/stage-2/api.Dockerfile
+    image: finance-platform-api:stage-2
+    environment:
+      DATABASE_URL: postgresql://finance:finance_demo@db:5432/finance_platform
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: finance_platform
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: finance_demo
+    volumes:
+      - finance_postgres_data:/var/lib/postgresql/data
+      - ../../../app/stage-2/database/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance -d finance_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  finance_postgres_data:

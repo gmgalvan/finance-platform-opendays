@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Crea una cuenta de demostración y personaliza tu experiencia en Finance Platform.">
+    <title>Crear cuenta — Finance Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="subscribe.css">
+    <script src="subscribe.js" defer></script>
+  </head>
+  <body class="signup-page">
+    <a class="skip-link" href="#contenido">Ir al formulario</a>
+
+    <header class="signup-header">
+      <a class="brand" href="index.html" aria-label="Volver al inicio de Finance Platform">
+        <span class="brand-symbol" aria-hidden="true">F</span>
+        <span>
+          <strong>Finance</strong>
+          <small>PLATFORM</small>
+        </span>
+      </a>
+      <a class="back-link" href="index.html"><span aria-hidden="true">←</span> Volver al dashboard</a>
+    </header>
+
+    <main id="contenido" class="signup-layout">
+      <aside class="signup-story">
+        <p class="eyebrow">Finance Plus</p>
+        <h1>Tu información financiera, a tu manera.</h1>
+        <p class="story-lead">Crea una cuenta de demostración y elige los temas que quieres ver primero.</p>
+
+        <div class="plan-card" aria-label="Resumen del plan Finance Plus">
+          <div>
+            <p>Plan mensual</p>
+            <strong>$149 <small>MXN</small></strong>
+          </div>
+          <span>Demo</span>
+        </div>
+
+        <ul class="benefits">
+          <li><span aria-hidden="true">01</span> Resumen diario personalizado</li>
+          <li><span aria-hidden="true">02</span> Alertas de tu lista de seguimiento</li>
+          <li><span aria-hidden="true">03</span> Archivo completo de análisis</li>
+        </ul>
+
+        <div class="security-note">
+          <span aria-hidden="true">◇</span>
+          <p><strong>Prototipo educativo</strong>No ingreses información ni contraseñas reales. Los datos se guardan en PostgreSQL local y no se realizará ningún cargo.</p>
+        </div>
+      </aside>
+
+      <section class="signup-workspace" aria-labelledby="form-title">
+        <ol class="stepper" aria-label="Progreso de creación de cuenta">
+          <li class="current" data-step-indicator="1"><span>1</span> Cuenta</li>
+          <li data-step-indicator="2"><span>2</span> Preferencias</li>
+          <li data-step-indicator="3"><span>3</span> Confirmación</li>
+        </ol>
+
+        <form id="signup-form" novalidate>
+          <section class="form-step" data-step="1" aria-labelledby="form-title">
+            <p class="eyebrow">Paso 1 de 3</p>
+            <h2 id="form-title" tabindex="-1">Crea tu cuenta</h2>
+            <p class="step-intro">Estos datos se enviarán a la API local y se guardarán en PostgreSQL.</p>
+
+            <div class="field-grid">
+              <label class="field full-field">
+                <span>Nombre completo</span>
+                <input type="text" name="name" autocomplete="name" value="Ana Díaz" minlength="2" required>
+                <small>Así aparecerá en tu dashboard.</small>
+              </label>
+
+              <label class="field full-field">
+                <span>Correo electrónico</span>
+                <input type="email" name="email" autocomplete="email" value="ana@example.com" required>
+                <small>Usa una dirección ficticia para la demo.</small>
+              </label>
+
+              <label class="field full-field">
+                <span>Contraseña de demostración</span>
+                <div class="password-field">
+                  <input type="password" name="password" autocomplete="new-password" value="demo-2026" minlength="8" required>
+                  <button type="button" class="password-toggle" aria-label="Mostrar contraseña" aria-pressed="false">Ver</button>
+                </div>
+                <small>Mínimo 8 caracteres. No uses una contraseña real.</small>
+              </label>
+            </div>
+
+            <div class="form-actions single-action">
+              <button class="primary-button next-button" type="button" data-next="2">Continuar <span aria-hidden="true">→</span></button>
+            </div>
+          </section>
+
+          <section class="form-step" data-step="2" aria-labelledby="preferences-title" hidden>
+            <p class="eyebrow">Paso 2 de 3</p>
+            <h2 id="preferences-title" tabindex="-1">¿Qué quieres seguir?</h2>
+            <p class="step-intro">Selecciona al menos un tema. Esto personalizará el contenido del dashboard.</p>
+
+            <fieldset class="topic-grid">
+              <legend class="sr-only">Temas de interés</legend>
+
+              <label class="topic-card">
+                <input type="checkbox" name="topics" value="Mercados" checked>
+                <span class="checkmark" aria-hidden="true">✓</span>
+                <span class="topic-icon market-topic" aria-hidden="true">↗</span>
+                <strong>Mercados</strong>
+                <small>Índices, acciones y movimientos destacados.</small>
+              </label>
+
+              <label class="topic-card">
+                <input type="checkbox" name="topics" value="Economía" checked>
+                <span class="checkmark" aria-hidden="true">✓</span>
+                <span class="topic-icon economy-topic" aria-hidden="true">◎</span>
+                <strong>Economía</strong>
+                <small>Tasas, inflación y panorama internacional.</small>
+              </label>
+
+              <label class="topic-card">
+                <input type="checkbox" name="topics" value="Finanzas personales">
+                <span class="checkmark" aria-hidden="true">✓</span>
+                <span class="topic-icon personal-topic" aria-hidden="true">◇</span>
+                <strong>Finanzas personales</strong>
+                <small>Ahorro, presupuesto y metas financieras.</small>
+              </label>
+
+              <label class="topic-card">
+                <input type="checkbox" name="topics" value="Tecnología">
+                <span class="checkmark" aria-hidden="true">✓</span>
+                <span class="topic-icon tech-topic" aria-hidden="true">⌁</span>
+                <strong>Tecnología</strong>
+                <small>Innovación aplicada a servicios financieros.</small>
+              </label>
+            </fieldset>
+
+            <p class="form-error" id="topics-error" role="alert" tabindex="-1" hidden>Selecciona al menos un tema para continuar.</p>
+
+            <label class="consent-field">
+              <input type="checkbox" name="newsletter" checked>
+              <span>Quiero recibir el resumen financiero de demostración.</span>
+            </label>
+
+            <div class="form-actions">
+              <button class="text-button" type="button" data-back="1"><span aria-hidden="true">←</span> Regresar</button>
+              <button class="primary-button next-button" type="button" data-next="3">Revisar cuenta <span aria-hidden="true">→</span></button>
+            </div>
+          </section>
+
+          <section class="form-step" data-step="3" aria-labelledby="review-title" hidden>
+            <p class="eyebrow">Paso 3 de 3</p>
+            <h2 id="review-title" tabindex="-1">Revisa tu cuenta</h2>
+            <p class="step-intro">Estos datos se usarán para simular la creación de tu perfil.</p>
+
+            <dl class="review-list">
+              <div><dt>Nombre</dt><dd data-review="name">Ana Díaz</dd></div>
+              <div><dt>Correo</dt><dd data-review="email">ana@example.com</dd></div>
+              <div><dt>Intereses</dt><dd data-review="topics">Mercados, Economía</dd></div>
+              <div><dt>Plan</dt><dd>Finance Plus · $149 MXN/mes</dd></div>
+              <div><dt>Cobro</dt><dd><span class="demo-pill">Simulado</span> No se realizará ningún cargo</dd></div>
+            </dl>
+
+            <label class="consent-field terms-field">
+              <input type="checkbox" name="terms" required>
+              <span>Entiendo que esta es una demostración educativa y que los datos se guardarán en una base de datos local.</span>
+            </label>
+            <p class="form-error" id="terms-error" role="alert" hidden>Confirma que comprendes el alcance de la demostración.</p>
+
+            <div class="form-actions">
+              <button class="text-button" type="button" data-back="2"><span aria-hidden="true">←</span> Regresar</button>
+              <button class="primary-button submit-button" type="submit">Crear cuenta demo</button>
+            </div>
+          </section>
+        </form>
+
+        <section class="success-state" id="success-state" aria-labelledby="success-title" hidden>
+          <div class="success-mark" aria-hidden="true">✓</div>
+          <p class="eyebrow">Cuenta creada</p>
+          <h2 id="success-title" tabindex="-1">Todo listo, <span data-success-name>Ana</span>.</h2>
+          <p>La API creó tu cuenta y PostgreSQL guardó la suscripción. El dashboard mostrará tu nombre al regresar.</p>
+
+          <div class="request-preview">
+            <div>
+              <span class="method">POST</span>
+              <code>/api/subscriptions</code>
+              <span class="pending">201 Created</span>
+            </div>
+            <p>La solicitud viajó desde Nginx hacia la API de Python y terminó como una transacción en PostgreSQL.</p>
+          </div>
+
+          <a class="primary-button dashboard-link" href="index.html">Ir a mi dashboard <span aria-hidden="true">→</span></a>
+        </section>
+      </section>
+    </main>
+
+    <footer class="signup-footer">
+      <p>Finance Platform · Prototipo educativo</p>
+      <p>Frontend conectado a una API en Python y PostgreSQL.</p>
+    </footer>
+  </body>
+</html>
