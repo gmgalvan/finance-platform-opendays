@@ -1,0 +1,501 @@
+{
+ "descripcion": "Un cambio de configuración (FAILURE_RATE=0.5) hace que market-data falle la mitad de las veces. La API responde 503 en /api/market/quotes y se dispara AltaTasaDeErrores.",
+ "esperado": {
+  "hay_incidente": true,
+  "servicio": "market-data",
+  "causa_menciona": [
+   "FAILURE_RATE"
+  ],
+  "accion_recomendada": [
+   "rollout undo",
+   "rollback",
+   "revertir"
+  ],
+  "no_culpar": [
+   "postgres",
+   "base de datos"
+  ]
+ },
+ "contexto": {
+  "recolectado": "2026-11-11T04:06:31+00:00",
+  "prometheus": {
+   "alertas": [
+    {
+     "nombre": "AltaTasaDeErrores",
+     "estado": "firing",
+     "severidad": "page",
+     "desde": "2026-11-11T04:05:07.887120187Z",
+     "resumen": "La API consume el presupuesto de error 7.7 veces más rápido de lo permitido"
+    }
+   ],
+   "metricas": {
+    "disponibilidad_5m_pct": [
+     {
+      "etiquetas": {},
+      "valor": 92.324
+     }
+    ],
+    "consumo_presupuesto_5m": [
+     {
+      "etiquetas": {
+       "__name__": "slo:availability:burn_rate5m"
+      },
+      "valor": 7.676
+     }
+    ],
+    "consumo_presupuesto_1m": [
+     {
+      "etiquetas": {
+       "__name__": "slo:availability:burn_rate1m"
+      },
+      "valor": 13.462
+     }
+    ],
+    "presupuesto_restante_1h_pct": [
+     {
+      "etiquetas": {},
+      "valor": 0.0
+     }
+    ],
+    "latencia_bajo_500ms_5m_pct": [
+     {
+      "etiquetas": {},
+      "valor": 100.0
+     }
+    ],
+    "errores_5xx_por_endpoint_req_s": [
+     {
+      "etiquetas": {
+       "path": "/api/market/quotes",
+       "status": "503"
+      },
+      "valor": 0.258
+     }
+    ],
+    "trafico_por_endpoint_req_s": [
+     {
+      "etiquetas": {
+       "path": "/api/subscriptions"
+      },
+      "valor": 0.722
+     },
+     {
+      "etiquetas": {
+       "path": "/api/dashboard"
+      },
+      "valor": 1.283
+     },
+     {
+      "etiquetas": {
+       "path": "/api/market/quotes"
+      },
+      "valor": 0.994
+     },
+     {
+      "etiquetas": {
+       "path": "/api/health"
+      },
+      "valor": 0.364
+     }
+    ],
+    "latencia_p95_por_endpoint_s": [
+     {
+      "etiquetas": {
+       "path": "/api/subscriptions"
+      },
+      "valor": 0.242
+     },
+     {
+      "etiquetas": {
+       "path": "/api/dashboard"
+      },
+      "valor": 0.028
+     },
+     {
+      "etiquetas": {
+       "path": "/api/market/quotes"
+      },
+      "valor": 0.074
+     },
+     {
+      "etiquetas": {
+       "path": "/api/health"
+      },
+      "valor": 0.024
+     }
+    ],
+    "errores_market_data_req_s": [
+     {
+      "etiquetas": {
+       "status": "200"
+      },
+      "valor": 0.756
+     },
+     {
+      "etiquetas": {
+       "status": "500"
+      },
+      "valor": 0.266
+     }
+    ],
+    "pods_activos_por_version": [
+     {
+      "etiquetas": {
+       "app": "api",
+       "version": "sha-e5c62c7"
+      },
+      "valor": 2.0
+     },
+     {
+      "etiquetas": {
+       "app": "market-data",
+       "version": "sha-e5c62c7"
+      },
+      "valor": 2.0
+     }
+    ]
+   },
+   "consultas_promql": {
+    "disponibilidad_5m_pct": "sli:availability:ratio_rate5m * 100",
+    "consumo_presupuesto_5m": "slo:availability:burn_rate5m",
+    "consumo_presupuesto_1m": "slo:availability:burn_rate1m",
+    "presupuesto_restante_1h_pct": "slo:availability:error_budget_remaining1h * 100",
+    "latencia_bajo_500ms_5m_pct": "sli:latency:ratio_rate5m * 100",
+    "errores_5xx_por_endpoint_req_s": "sum by (path, status) (rate(finance_api_requests_total{path!~\"/metrics|/health\", status=~\"5..\"}[5m]))",
+    "trafico_por_endpoint_req_s": "sum by (path) (rate(finance_api_requests_total{path!~\"/metrics|/health\"}[5m]))",
+    "latencia_p95_por_endpoint_s": "histogram_quantile(0.95, sum by (le, path) (rate(finance_api_request_duration_seconds_bucket{path!~\"/metrics|/health\"}[5m])))",
+    "errores_market_data_req_s": "sum by (status) (rate(market_data_requests_total{path=\"/quotes\"}[5m]))",
+    "pods_activos_por_version": "count by (app, version) (up{job=\"finance-pods\"} == 1)"
+   }
+  },
+  "jaeger": {
+   "ventana_minutos": 10,
+   "servicios": [
+    "finance-api",
+    "finance-nginx",
+    "jaeger",
+    "market-data"
+   ],
+   "trazas_con_error": [
+    {
+     "traza": "36e04ddccee5cf445d554684cf84986e",
+     "hace_segundos": 15,
+     "spans_con_error": [
+      {
+       "servicio": "finance-api",
+       "operacion": "GET",
+       "duracion_ms": 39.2,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "finance-nginx",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 56.0,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 54.1,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "consultar_proveedor",
+       "duracion_ms": 36.2,
+       "codigo_http": null
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "GET /quotes",
+       "duracion_ms": 37.4,
+       "codigo_http": 500
+      }
+     ]
+    },
+    {
+     "traza": "4028432634046f8025be731bf1577a2e",
+     "hace_segundos": 14,
+     "spans_con_error": [
+      {
+       "servicio": "market-data",
+       "operacion": "consultar_proveedor",
+       "duracion_ms": 28.2,
+       "codigo_http": null
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET",
+       "duracion_ms": 31.6,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "finance-nginx",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 41.0,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "GET /quotes",
+       "duracion_ms": 29.4,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 39.6,
+       "codigo_http": 503
+      }
+     ]
+    },
+    {
+     "traza": "464d1d529720b31c5ab6893d5af85005",
+     "hace_segundos": 9,
+     "spans_con_error": [
+      {
+       "servicio": "finance-api",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 35.8,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET",
+       "duracion_ms": 27.8,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "finance-nginx",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 37.0,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "consultar_proveedor",
+       "duracion_ms": 24.8,
+       "codigo_http": null
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "GET /quotes",
+       "duracion_ms": 26.1,
+       "codigo_http": 500
+      }
+     ]
+    },
+    {
+     "traza": "4428e2234265e45ffd7d44e7de55083a",
+     "hace_segundos": 8,
+     "spans_con_error": [
+      {
+       "servicio": "finance-nginx",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 58.0,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "GET /quotes",
+       "duracion_ms": 48.7,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET",
+       "duracion_ms": 49.9,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 57.3,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "consultar_proveedor",
+       "duracion_ms": 47.7,
+       "codigo_http": null
+      }
+     ]
+    },
+    {
+     "traza": "2fca7e0b16331ffc97a6c147ec99b8c9",
+     "hace_segundos": 6,
+     "spans_con_error": [
+      {
+       "servicio": "market-data",
+       "operacion": "GET /quotes",
+       "duracion_ms": 275.3,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 291.8,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "finance-nginx",
+       "operacion": "GET /api/market/quotes",
+       "duracion_ms": 293.0,
+       "codigo_http": 503
+      },
+      {
+       "servicio": "finance-api",
+       "operacion": "GET",
+       "duracion_ms": 277.1,
+       "codigo_http": 500
+      },
+      {
+       "servicio": "market-data",
+       "operacion": "consultar_proveedor",
+       "duracion_ms": 274.2,
+       "codigo_http": null
+      }
+     ]
+    }
+   ]
+  },
+  "kubernetes": {
+   "deployments": [
+    {
+     "nombre": "api",
+     "imagen": "ghcr.io/gmgalvan/finance-platform-api:sha-e5c62c7",
+     "replicas_listas": "2/2",
+     "variables": {
+      "OTEL_EXPORTER_OTLP_ENDPOINT": "http://jaeger.monitoring.svc:4318",
+      "OTEL_SERVICE_NAME": "finance-api"
+     },
+     "causa_del_ultimo_cambio": "Release sha-e5c62c7"
+    },
+    {
+     "nombre": "frontend",
+     "imagen": "ghcr.io/gmgalvan/finance-platform-frontend:sha-e5c62c7",
+     "replicas_listas": "2/2",
+     "variables": {
+      "OTEL_TRACE": "on",
+      "OTEL_EXPORTER_ENDPOINT": "jaeger.monitoring.svc.cluster.local:4317",
+      "OTLP_HTTP_COLLECTOR": "http://jaeger.monitoring.svc.cluster.local:4318"
+     },
+     "causa_del_ultimo_cambio": "Release sha-e5c62c7"
+    },
+    {
+     "nombre": "market-data",
+     "imagen": "ghcr.io/gmgalvan/finance-platform-market-data:sha-e5c62c7",
+     "replicas_listas": "2/2",
+     "variables": {
+      "OTEL_EXPORTER_OTLP_ENDPOINT": "http://jaeger.monitoring.svc:4318",
+      "OTEL_SERVICE_NAME": "market-data",
+      "FAILURE_RATE": "0.5"
+     },
+     "causa_del_ultimo_cambio": "Config: FAILURE_RATE=0.5"
+    }
+   ],
+   "historial_de_despliegues": {
+    "api": "deployment.apps/api \nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n3         Release sha-e5c62c7",
+    "frontend": "deployment.apps/frontend \nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n3         Release sha-e5c62c7",
+    "market-data": "deployment.apps/market-data \nREVISION  CHANGE-CAUSE\n1         <none>\n3         Config: FAILURE_RATE=0.5\n4         <none>\n5         Release sha-e5c62c7\n6         Config: FAILURE_RATE=0.5"
+   },
+   "pods": [
+    {
+     "nombre": "api-57bf555947-bc9x4",
+     "fase": "Running",
+     "reinicios": 0,
+     "creado": "2026-11-11T03:29:39Z"
+    },
+    {
+     "nombre": "api-57bf555947-tgbpg",
+     "fase": "Running",
+     "reinicios": 0,
+     "creado": "2026-11-11T03:29:46Z"
+    },
+    {
+     "nombre": "frontend-7b6878f65c-b4bcm",
+     "fase": "Running",
+     "reinicios": 0,
+     "creado": "2026-11-11T03:29:47Z"
+    },
+    {
+     "nombre": "frontend-7b6878f65c-rwl72",
+     "fase": "Running",
+     "reinicios": 0,
+     "creado": "2026-11-11T03:29:39Z"
+    },
+    {
+     "nombre": "market-data-674464dc87-5zkcp",
+     "fase": "Running",
+     "reinicios": 0,
+     "creado": "2026-11-11T04:03:38Z"
+    },
+    {
+     "nombre": "market-data-674464dc87-lsmwm",
+     "fase": "Running",
+     "reinicios": 0,
+     "creado": "2026-11-11T04:03:35Z"
+    },
+    {
+     "nombre": "postgres-0",
+     "fase": "Running",
+     "reinicios": 0,
+     "creado": "2026-11-11T03:18:34Z"
+    }
+   ],
+   "eventos_recientes": [
+    "2026-11-11T04:03:36Z Started Pod/market-data-674464dc87-lsmwm: Started container market-data",
+    "2026-11-11T04:03:37Z Unhealthy Pod/market-data-674464dc87-lsmwm: Readiness probe failed: Get \"http://10.244.0.33:8000/health\": dial tcp 10.244.0.33:8000: connect: connection refused",
+    "2026-11-11T04:03:38Z Scheduled Pod/market-data-674464dc87-5zkcp: Successfully assigned finance/market-data-674464dc87-5zkcp to finance-control-plane",
+    "2026-11-11T04:03:38Z Pulled Pod/market-data-674464dc87-5zkcp: Container image \"ghcr.io/gmgalvan/finance-platform-market-data:sha-e5c62c7\" already present on machine",
+    "2026-11-11T04:03:38Z Created Pod/market-data-674464dc87-5zkcp: Created container market-data",
+    "2026-11-11T04:03:38Z Started Pod/market-data-674464dc87-5zkcp: Started container market-data",
+    "2026-11-11T04:03:38Z SuccessfulCreate ReplicaSet/market-data-674464dc87: Created pod: market-data-674464dc87-5zkcp",
+    "2026-11-11T04:03:38Z Killing Pod/market-data-87dbf9b98-pqmvd: Stopping container market-data",
+    "2026-11-11T04:03:38Z SuccessfulDelete ReplicaSet/market-data-87dbf9b98: Deleted pod: market-data-87dbf9b98-pqmvd",
+    "2026-11-11T04:03:38Z ScalingReplicaSet Deployment/market-data: Scaled down replica set market-data-87dbf9b98 to 1 from 2",
+    "2026-11-11T04:03:38Z ScalingReplicaSet Deployment/market-data: Scaled up replica set market-data-674464dc87 to 2 from 1",
+    "2026-11-11T04:03:39Z Unhealthy Pod/market-data-674464dc87-5zkcp: Readiness probe failed: Get \"http://10.244.0.34:8000/health\": dial tcp 10.244.0.34:8000: connect: connection refused",
+    "2026-11-11T04:03:40Z Killing Pod/market-data-87dbf9b98-hqfh7: Stopping container market-data",
+    "2026-11-11T04:03:40Z SuccessfulDelete ReplicaSet/market-data-87dbf9b98: Deleted pod: market-data-87dbf9b98-hqfh7",
+    "2026-11-11T04:03:40Z ScalingReplicaSet Deployment/market-data: Scaled down replica set market-data-87dbf9b98 to 0 from 1"
+   ],
+   "logs_recientes": {
+    "api": [
+     "INFO:     10.244.0.28:56550 - \"GET /api/dashboard?email=nadie1462@example.com HTTP/1.1\" 404 Not Found",
+     "INFO:     10.244.0.1:41638 - \"GET /health HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.31:50432 - \"POST /api/subscriptions HTTP/1.1\" 201 Created",
+     "INFO:     10.244.0.16:44476 - \"GET /metrics HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.28:56580 - \"GET /api/market/quotes HTTP/1.1\" 503 Service Unavailable",
+     "INFO:     10.244.0.31:50452 - \"POST /api/subscriptions HTTP/1.1\" 201 Created",
+     "INFO:     10.244.0.28:56584 - \"GET /api/dashboard?email=usuario263@example.com HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.1:46190 - \"GET /health HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.28:46718 - \"GET /api/market/quotes HTTP/1.1\" 503 Service Unavailable",
+     "INFO:     10.244.0.28:46722 - \"POST /api/subscriptions HTTP/1.1\" 201 Created",
+     "INFO:     10.244.0.31:41882 - \"GET /api/market/quotes HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.16:44476 - \"GET /metrics HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.31:41892 - \"GET /api/market/quotes HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.28:46724 - \"GET /api/market/quotes HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.28:46760 - \"GET /api/health HTTP/1.1\" 200 OK"
+    ],
+    "market-data": [
+     "INFO:     10.244.0.30:46492 - \"GET /quotes HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.16:57684 - \"GET /metrics HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.1:49456 - \"GET /health HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.27:35752 - \"GET /quotes HTTP/1.1\" 500 Internal Server Error",
+     "INFO:     10.244.0.30:46508 - \"GET /quotes HTTP/1.1\" 500 Internal Server Error",
+     "INFO:     10.244.0.16:57684 - \"GET /metrics HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.30:46526 - \"GET /quotes HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.1:49470 - \"GET /health HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.1:49472 - \"GET /health HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.30:36156 - \"GET /quotes HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.27:46886 - \"GET /quotes HTTP/1.1\" 500 Internal Server Error",
+     "INFO:     10.244.0.27:46890 - \"GET /quotes HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.16:57684 - \"GET /metrics HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.1:60740 - \"GET /health HTTP/1.1\" 200 OK",
+     "INFO:     10.244.0.30:36186 - \"GET /quotes HTTP/1.1\" 200 OK"
+    ]
+   }
+  }
+ }
+}

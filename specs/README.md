@@ -284,6 +284,14 @@ Loki (logs) queda fuera de la demo.
 
 Ensayo: alerta en 120 s después del fallo, rollback 18 s después de la alerta, alerta resuelta 56 s después del rollback. Suscripciones y dashboard no se afectaron.
 
+### Stage 10 — Operaciones asistidas por IA: terminado
+
+- `app/ai-assistant/`: recolector de contexto de solo lectura, analista con Claude Haiku 5.5 (sin herramientas, salida con esquema fijo, acciones con aprobación humana) y evaluador con dos casos grabados de un incidente real.
+- Dos backends: `claude-code` (por defecto, suscripción vía `claude -p --tools ""`) y `api` (SDK de Python con `ANTHROPIC_API_KEY`).
+- `make ai-analyze` y `make ai-eval`; el CI corre las pruebas con respuestas simuladas.
+
+Ensayo en vivo: diagnóstico correcto (market-data, `FAILURE_RATE=0.5`, rollback con aprobación) en 38 s. Evaluación: 9/9 revisiones, ≈ 25-30 s y ≈ $0.004 equivalentes por análisis.
+
 ## Decisiones importantes
 
 - Finance Journal y Finance Platform son etapas del mismo producto, no proyectos independientes.
@@ -295,8 +303,10 @@ Ensayo: alerta en 120 s después del fallo, rollback 18 s después de la alerta,
 - Los recursos cloud deben destruirse al terminar cada práctica.
 - Todo cambio llega a `main` mediante Pull Request y CI en verde.
 
-## Siguiente etapa — Operaciones asistidas por IA
+## Siguiente etapa — Preparar la charla
 
-1. Recolectar el contexto del incidente: alertas, métricas, trazas con error y `rollout history`.
-2. Pedir a un modelo un resumen y posibles causas, sin permisos para desplegar.
-3. Evaluar la respuesta contra la causa real (`FAILURE_RATE=0.5`) y medir latencia, tokens y costo.
+La parte técnica está completa. Pendiente:
+
+1. Diapositivas (8) apoyadas en lo construido.
+2. Ensayo general con `make demo-up` y el guion completo, cronometrado contra los 42 minutos.
+3. Video de respaldo del pipeline, el despliegue y el incidente.
