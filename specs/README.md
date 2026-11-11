@@ -227,6 +227,14 @@ El CI incluye el job **Kubernetes**: renderiza con Kustomize, valida con kubecon
 
 Comandos: `make kind-up`, `make k8s-deploy`, `make k8s-status`, `make k8s-smoke`, `make kind-down`.
 
+### Stage 7 — Del PR a Kubernetes: ensayado
+
+Flujo completo probado con el PR #6 (aviso "🚀 Nueva versión desplegada con CI/CD"): PR → CI → merge → imagen `sha-123a90d` en GHCR → `make k8s-release` → Rolling Update en Kind.
+
+Durante el despliegue respondieron 149 de 149 solicitudes con HTTP 200: cero caídas.
+
+Comandos: `make k8s-release`, `make k8s-watch`, `make k8s-ping`, `make k8s-history`, `make k8s-rollback`. El guion de la demo está en `docs/guia-de-ejecucion.md`, Paso 7.
+
 ## Decisiones importantes
 
 - Finance Journal y Finance Platform son etapas del mismo producto, no proyectos independientes.
@@ -238,14 +246,9 @@ Comandos: `make kind-up`, `make k8s-deploy`, `make k8s-status`, `make k8s-smoke`
 - Los recursos cloud deben destruirse al terminar cada práctica.
 - Todo cambio llega a `main` mediante Pull Request y CI en verde.
 
-## Siguiente etapa — Del PR a Kubernetes
+## Siguiente etapa — Observabilidad
 
-1. Cambio visible en el dashboard → PR → CI → merge → imagen `sha-<commit>` en GHCR.
-2. Actualizar `newTag` en `deploy/kubernetes/kustomization.yaml` y ejecutar `make k8s-deploy`.
-3. Observar el Rolling Update en vivo.
-
-Después:
-
-1. Prometheus y Grafana.
-2. SLI, SLO, presupuesto de error, fallo controlado y runbook SRE.
-3. Análisis de incidentes asistido por IA.
+1. Prometheus y Grafana en Kind, recolectando `/api/metrics`.
+2. Dashboard con solicitudes, errores y latencia; observar un Rolling Update.
+3. SLI, SLO, presupuesto de error, fallo controlado y runbook SRE.
+4. Análisis de incidentes asistido por IA.
