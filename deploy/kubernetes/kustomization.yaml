@@ -27,8 +27,8 @@ configMapGenerator:
 # Para desplegar otra versión, cambia newTag por sha-<commit>.
 images:
   - name: ghcr.io/gmgalvan/finance-platform-api
-    newTag: sha-c93027a
+    newTag: sha-e5c62c7
   - name: ghcr.io/gmgalvan/finance-platform-frontend
-    newTag: sha-c93027a
+    newTag: sha-e5c62c7
   - name: ghcr.io/gmgalvan/finance-platform-market-data
-    newTag: sha-c93027a
+    newTag: sha-e5c62c7
